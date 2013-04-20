@@ -1,0 +1,32 @@
+<article class="containers">
+<%include file="create_cont.tmpl"/>
+<table class="containers">
+% for i in containers:
+<tr>
+  <td id="container">
+      <a href="${base}/${i['name']}">
+      <img src="${top}/image/folder.png" class="cont_icon">${i['name']}
+       </a>
+  </td>
+  <td id="status">
+    <ul>
+      <li>Count: ${i['count']}</li>
+      <li>Size: ${i['bytes']}</li>
+    </ul>
+  </td>
+  <td id="actions">
+    <ul>
+      <li>
+      <a href="${base}/${i['name']}?_action=delete&_confirm=true">Delete</a>
+      </li>
+      <li style="margin: 0"><a href="/horizon/dash/1/containers/SWIFT_I/acl">ACL</a></li>
+      <li style="margin: 0"><a href="/horizon/dash/1/containers/SWIFT_I/meta">MetaData</a></li
+    </ul>
+  </td>
+</tr>
+% endfor
+</table>
+% if len(containers)!=0:
+<%include file="create_cont.tmpl"/>
+% endif
+</article>

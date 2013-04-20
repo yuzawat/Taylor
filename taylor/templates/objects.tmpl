@@ -1,0 +1,32 @@
+<article class="objects">
+<%include file="upload_obj.tmpl"/>
+<table class="objects">
+% for i in objects:
+<tr>
+  <td id="object">
+      <a href="${base}/${i['name']}">
+      	 <img src="${top}/image/file.png" class="obj_icon">${i['name']}
+      </a></td>
+  <td id="status">
+    <ul>
+      <li>Content-Type: ${i['content_type']}</li>
+      <li>Size: ${i['bytes']}</li>
+      <li>Last-modified: ${i['last_modified']}</li>
+    </ul>
+  </td>
+  <td id="actions">
+    <ul>
+      <li>
+      <a href="${base}/${i['name']}?_action=delete&_confirm=true">Delete</a>
+      </li>
+      <li style="margin: 0"><a href="/horizon/dash/1/objects/SWIFT_I/meta">Copy</a></li
+      <li style="margin: 0"><a href="/horizon/dash/1/objects/SWIFT_I/meta">MetaData</a></li
+    </ul>
+  </td>
+</tr>
+% endfor
+</table>
+% if len(objects)!=0:
+<%include file="upload_obj.tmpl"/>
+% endif
+</article>

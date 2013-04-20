@@ -1,0 +1,27 @@
+img.login_icon {
+    width: 400px;
+    height: 400px;
+}
+
+img.cont_icon {
+    width: 240px;
+    height: 240px;
+}
+
+img.obj_icon {
+    width: 240px;
+    height: 240px;
+}
+
+.navi_container {
+    display: box;
+    display: -moz-box;
+    display: -o-box;
+    display: -webkit-box;
+    display: -ms-box;
+    box-orient: horizontal;
+    -moz-box-orient: horizontal;
+    -o-box-orient: horizontal;
+    -webkit-box-orient: horizontal;
+    -ms-box-orient: horizontal;
+}
