@@ -8,7 +8,7 @@ from mimetypes import guess_type
 from swiftclient import Connection, ClientException, \
     get_auth, get_account, get_container, get_object, \
     put_container, put_object, delete_container, delete_object, \
-    post_container, post_object
+    head_container, head_object, post_container, post_object
 from swift.common.http import *
 from swift.common.swob import Request, Response, wsgify, \
     HTTPNotFound, HTTPFound
@@ -57,6 +57,7 @@ def params_alt(self):
             self._params_cache = f_para
         else:
             self._params_cache = {}
+    print self._params_cache
     return self._params_cache
 
 
@@ -107,6 +108,16 @@ def set_cookie(self, name, value, expires=None, path=None,
 
 
 Response.set_cookie = MethodType(set_cookie, None, Response)
+
+
+def copy_object(url, token, from_cont, from_obj, to_cont, to_obj=None,
+                http_conn=None, proxy=None):
+    """ add to swiftclient """
+    to_obj_name = to_obj if to_obj else from_obj
+    return put_object(url, token, to_cont, name=to_obj_name, contents=None,
+                      content_length=0,
+                      headers={'X-Copy-From': '/%s/%s' % (from_cont, from_obj)},
+                      http_conn=http_conn, proxy=proxy)
 
 
 class Taylor(object):
@@ -247,7 +258,7 @@ class Taylor(object):
         params = req.params_alt()
         if params.get('_action') == 'create':
             print 'path_type: %s' % path_type
-            if self.ajax_routine(req, storage_url, token) == HTTP_CREATED:
+            if self.action_routine(req, storage_url, token) == HTTP_CREATED:
                 self.token_bank[token].update({'msg': 'Create Success'})
             else:
                 self.token_bank[token].update({'msg': 'Create Failed'})
@@ -256,10 +267,25 @@ class Taylor(object):
             else:
                 loc = storage_url
         if params.get('_action') == 'delete':
-            if self.ajax_routine(req, storage_url, token) == HTTP_NO_CONTENT:
+            if self.action_routine(req, storage_url, token) == HTTP_NO_CONTENT:
                 self.token_bank[token].update({'msg': 'Delete Success'})
             else:
                 self.token_bank[token].update({'msg': 'Delete Failed'})
+            if path_type == 4:
+                loc = self.cont_path(path)
+            else:
+                loc = storage_url
+        if params.get('_action') == 'copy':
+            if self.action_routine(req, storage_url, token) == HTTP_CREATED:
+                self.token_bank[token].update({'msg': 'Copy Success'})
+            else:
+                self.token_bank[token].update({'msg': 'Copy Failed'})
+            loc = self.cont_path(path)
+        if params.get('_action') == 'metadata':
+            if self.action_routine(req, storage_url, token) == HTTP_CREATED:
+                self.token_bank[token].update({'msg': 'Metadata update Success'})
+            else:
+                self.token_bank[token].update({'msg': 'Metadata update Failed'})
             if path_type == 4:
                 loc = self.cont_path(path)
             else:
@@ -277,7 +303,7 @@ class Taylor(object):
             except KeyError, err:
                 print 'Key Error: %s' % err
             if delete_ok:
-                if self.ajax_routine(req, storage_url, token) == HTTP_NO_CONTENT:
+                if self.action_routine(req, storage_url, token) == HTTP_NO_CONTENT:
                     self.token_bank[token].update({'msg': 'Delete Success'})
                 else:
                     self.token_bank[token].update({'msg': 'Delete Failed'})
@@ -293,10 +319,6 @@ class Taylor(object):
                                    'message': ''})
         return resp
 
-
-    def metadata_page(self, req, storage_url, token):
-        pass
-
     def page(self, req, storage_url, token):
         """ main page container list or object list """
         path =  urlparse(self.del_prefix(req.url)).path
@@ -307,13 +329,18 @@ class Taylor(object):
         base = self.add_prefix(urlparse(storage_url).path)
         status = self.token_bank.get(token, None)
         msg = ''
+        meta_edit = req.params_alt().get('meta_edit', None)
         if status:
             msg = status.get('msg', '')
         if path_type == 2: ### account
             try:
                 (acct_status, cont_list) = get_account(storage_url, token)
-            except ClientException, e:
+            except ClientException, err:
                 pass
+            cont_meta = {}
+            for i in cont_list:
+                meta = head_container(storage_url, token, i['name'])
+                cont_meta[i['name']] =  dict([(m[len('x-container-meta-'):].capitalize(), meta[m]) for m in meta.keys() if m.startswith('x-container-meta')])
             resp = Response(charset='utf8')
             resp.set_cookie('_token', token, path=self.page_path,
                             max_age=self.cookie_max_age)
@@ -324,13 +351,22 @@ class Taylor(object):
                                        'account': acc,
                                        'message': msg,
                                        'base': base,
-                                       'containers': cont_list})
+                                       'containers': cont_list,
+                                       'container_meta': cont_meta,
+                                       'meta_edit': meta_edit})
             self.token_bank[token].update({'msg': ''})
             return resp
         if path_type == 3: ### container
-            (cont_status, obj_list) = get_container(storage_url, token, cont)
-            print [(i, cont_status.get(i)) for i in 
-                   [k for k in cont_status.keys() if k.lower().startswith('x-container-meta-')]]
+            try:
+                (acct_status, cont_list) = get_account(storage_url, token)
+                (cont_status, obj_list) = get_container(storage_url, token, cont)
+            except ClientException, err:
+                pass
+            obj_meta = {}
+            cont_names = [i['name'] for i in cont_list]
+            for i in obj_list:
+                meta = head_object(storage_url, token, cont, i['name'])
+                obj_meta[i['name']] = dict([(m[len('x-object-meta-'):].capitalize(), meta[m]) for m in meta.keys() if m.startswith('x-object-meta')])
             resp = Response(charset='utf8')
             resp.set_cookie('_token', token, path=self.page_path,
                             max_age=self.cookie_max_age)
@@ -343,7 +379,10 @@ class Taylor(object):
                                        'container': cont,
                                        'message': msg,
                                        'base': base,
-                                       'objects': obj_list})
+                                       'objects': obj_list,
+                                       'object_meta': obj_meta,
+                                       'cont_names': cont_names,
+                                       'meta_edit': meta_edit})
             self.token_bank[token].update({'msg': ''})
             return resp
         if path_type == 4: ### object
@@ -357,7 +396,7 @@ class Taylor(object):
             resp = Response()
             resp.set_cookie('_token', token, path=self.page_path,
                             max_age=self.cookie_max_age)
-            resp.status = 200
+            resp.status = HTTP_OK
             resp.headers = obj_status 
             resp.body = objct
             self.token_bank[token].update({'msg': ''})
@@ -386,10 +425,30 @@ class Taylor(object):
             path = '/'.join(p.path.split('/'))
         return urlunsplit((p.scheme, p.netloc, path, p.query, p.fragment))
 
-    def ajax_routine(self, req, storage_url, token):
+    def metadata_check(self, form):
+        """ """
+        removing = [i[len('remove-'):] for i in form.keys() if i.startswith('remove-')]
+        headers = {}
+        for h in [i for i in form.keys() if i.startswith('x-container-meta-') or i.startswith('x-container-meta-')]:
+            if h in removing:
+                headers.update({h: ''})
+                continue
+            headers.update({h: form[h]})
+        for i in range(10):
+            if 'container_meta_key%s' % i in form:
+                keyname = 'x-container-meta-' + form['container_meta_key%s' % i].lower()
+                headers.update({keyname: form['container_meta_val%s' % i]})
+                continue
+            if 'object_meta_key%s' % i in form:
+                keyname = 'x-object-meta-' + form['object_meta_key%s' % i].lower()
+                headers.update({keyname: form['object_val%s' % i]})
+        print headers
+        return headers
+
+    def action_routine(self, req, storage_url, token):
         """ execute action """
         path =  urlparse(self.del_prefix(req.url)).path
-        print 'ajax: %s' % path
+        print 'action: %s' % path
         vrs, acc, cont, obj = split_path(path, 1, 4, True)
         path_type = len([i for i in [vrs, acc, cont, obj] if i])
         params = req.params_alt()
@@ -399,7 +458,12 @@ class Taylor(object):
         marker = str(params.get('_marker', ''))
         cont = params.get('cont_name', cont)
         obj_name, obj_fp = params.get('obj_name', ('', None))
-        
+        from_cont = params.get('from_container', None)
+        from_obj = params.get('from_object', None)
+        to_cont = params.get('to_container', None)
+        to_obj = params.get('to_object', None)
+        md_headers = self.metadata_check(params)
+
         if path_type == 2: ### account
             print 'acc'
             if action == 'list':
@@ -411,6 +475,14 @@ class Taylor(object):
                 except ClientException, err:
                     return err.http_status
                 return HTTP_CREATED
+            if action == 'metadata':
+                print 'metadata'
+                cont = params.get('container_name')
+                try:
+                    post_container(storage_url, token, cont, md_headers)
+                except ClientException, err:
+                    return err.http_status
+                return HTTP_ACCEPTED
         if path_type == 3: ### container
             print 'cont'
             if action == 'list':
@@ -422,11 +494,18 @@ class Taylor(object):
                 except ClientException, err:
                     return err.http_status
                 return HTTP_NO_CONTENT
-            if action == 'metadata':
-                post_container(storage_url, token, container, meta_data)
             if action == 'create':
                 try:
                     put_object(storage_url, token, cont, obj_name, obj_fp)
+                except ClientException, err:
+                    return err.http_status
+                return HTTP_CREATED
+            if action is 'metadata':
+                obj = params.get('object_name')
+                post_object(storage_url, token, cont, obj, md_headers)
+            if action == 'copy':
+                try:
+                    copy_object(storage_url, token, cont, from_obj, to_cont, to_obj)
                 except ClientException, err:
                     return err.http_status
                 return HTTP_CREATED
@@ -442,10 +521,6 @@ class Taylor(object):
                 except ClientException, err:
                     return err.http_status
                 return HTTP_NO_CONTENT
-            if action == 'copy':
-                pass
-            if action is 'metadata':
-                post_object(storage_url, token, cont, obj, meta_data)
 
 
 def filter_factory(global_conf, **local_conf):

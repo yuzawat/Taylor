@@ -1,17 +1,26 @@
 <article class="containers">
 <%include file="create_cont.tmpl"/>
 <table class="containers">
+<tr>
+<th>Name</th>
+<th>Status/Metadata</th>
+<th>Action</th>
+</tr>
 % for i in containers:
+<a name="${i['name']}"></a>
 <tr>
   <td id="container">
       <a href="${base}/${i['name']}">
-      <img src="${top}/image/folder.png" class="cont_icon">${i['name']}
+      <img src="${top}/image/folder.png" class="cont_icon" alt="${i['name']}">${i['name']}
        </a>
   </td>
   <td id="status">
     <ul>
       <li>Count: ${i['count']}</li>
       <li>Size: ${i['bytes']}</li>
+      % for j in container_meta[i['name']].keys():
+      <li>${j}: ${container_meta[i['name']][j]}</li>
+      % endfor
     </ul>
   </td>
   <td id="actions">
@@ -19,11 +28,40 @@
       <li>
       <a href="${base}/${i['name']}?_action=delete&_confirm=true">Delete</a>
       </li>
-      <li style="margin: 0"><a href="/horizon/dash/1/containers/SWIFT_I/acl">ACL</a></li>
-      <li style="margin: 0"><a href="/horizon/dash/1/containers/SWIFT_I/meta">MetaData</a></li
+      <li><a href="${base}?acl_edit=${i['name']}">Edit ACL</a></li>
+% if i['name'] == meta_edit:
+      <li><a href="${base}">Stop editing MetaData</a></li>
+% else:
+      <li><a href="${base}?meta_edit=${i['name']}#${i['name']}">Edit Metadata</a></li>
+% endif
     </ul>
   </td>
 </tr>
+% if i['name'] == meta_edit:
+<tr>
+<td colspan="3">
+  <h3>Metadata Edit</h3>
+  <form action="" method="post">
+  <input type="hidden" name="_action" value="metadata">
+  <input type="hidden" name="container_name" value="${i['name']}">
+  <fieldset>
+  <table>
+    <tr><th>Key</th><th>Value</th><th>Remove</th></tr>
+% for m in container_meta[i['name']].keys():
+    <tr><td>${m}</td><td>${container_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
+    <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[i['name']][m]}">
+% endfor
+% for n in range(3):
+    <tr><td><input type="text" name="container_meta_key${n}" size="12" maxlength="256"></td>
+    <td><input type="text" name="container_meta_val${n}" size="24" maxlength="256"></td><td></td></tr>
+% endfor
+  </table>
+  <input type="submit" value="Commit">
+  </fieldset>
+  </form>
+</td>
+</tr>
+% endif
 % endfor
 </table>
 % if len(containers)!=0:
