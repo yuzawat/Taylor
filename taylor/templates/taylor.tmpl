@@ -1,54 +1,54 @@
 <!DOCTYPE html>
 <html lang=${lang}>
-<head>
-<meta charset="utf-8" />
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-<meta http-equiv="Content-Style-Type" content="text/css" />
-<meta http-equiv="Content-Script-Type" content="text/javascript" />
-<link rel="shortcut icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
-<link rel="icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
-<link rel="stylesheet" href="${top}/css/default.css" type="text/css" />
-<style type="text/css">
-</style>
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
-<title>${title}</title>
-<body>
-<header id="head">
-<h1>${title}: OpenStack Object Storage Manipulator</h1>
-<p id="message">${message}</p>
-</header>
-<nav id="navi">
-<div id="navi_container">
-% if account:
-<li><a href="${top}/v1/${account}">${account}</a></li>
-% endif
-% if container:
-<li><a href="${top}/v1/${account}/${container}">${container}</a></li>
-% endif
-</div>
-% if account:
-<a href="${top}/v1/${account}?_action=logout">Logout</a>
-% endif
-</navi>
-<section class="main">
-% if ptype=='login':
-<%include file="login.tmpl"/>
-% endif
-% if ptype=='containers':
-<%include file="containers.tmpl"/>
-% endif
-% if ptype=='objects':
-<%include file="objects.tmpl"/>
-% endif
-% if ptype=='confirm':
-<%include file="confirm.tmpl"/>
-% endif
-% if ptype=='metadata':
-<%include file="metadata.tmpl"/>
-% endif
-</section>
-<footer id="foot"></footer>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Style-Type" content="text/css" />
+    <meta http-equiv="Content-Script-Type" content="text/javascript" />
+    <link rel="shortcut icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
+    <link rel="icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
+    <link rel="stylesheet" href="${top}/css/default.css" type="text/css" />
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+    <title>${title}</title>
+    <body>
+      <header id="head">
+	<h1 class="title">${title}: OpenStack Object Storage Manipulator</h1>
+	<p id="message">${message}</p>
+      </header>
+      <div class="navigate">
+	<nav id="navi">
+	  <ul id="navigate">
+	    % if account:
+	    <li><a href="${top}/v1/${account}">${account}</a></li>
+	    % endif
+	    % if container:
+	    <li><a href="${top}/v1/${account}/${container}">${container}</a></li>
+	    % endif
+	    % if account:
+	    <li><a href="${top}/v1/${account}?_action=logout">Logout</a></li>
+	    % endif
+	  </ul>
+	</nav>
+      </div>
+      <section class="main">
+	% if ptype=='login':
+	<%include file="login.tmpl"/>
+	% endif
+	% if ptype=='containers':
+	<%include file="containers.tmpl"/>
+	% endif
+	% if ptype=='objects':
+	<%include file="objects.tmpl"/>
+	% endif
+	% if ptype=='confirm':
+	<%include file="confirm.tmpl"/>
+	% endif
+	% if ptype=='metadata':
+	<%include file="metadata.tmpl"/>
+	% endif
+      </section>
+      <footer id="foot"></footer>
+    </body>
 </html>

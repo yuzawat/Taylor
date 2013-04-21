@@ -1,10 +1,10 @@
-<form action="" method="post" enctype="multipart/form-data">
-<fieldset>
-<input type="hidden" name="_action" value="create" id="create_obj" />
-<label for="obj_name">filename</label>
-<input id="id_username" type="file" name="obj_name" />
-<div class="button">
-<input id="upload_btn" type="submit" value="upload">
+<div class="upload_obj">
+  <form action="" method="post" enctype="multipart/form-data">
+    <fieldset class="upload_obj">
+      <legend>Upload Object</legend>
+      <input type="hidden" name="_action" value="create" id="create_obj" />
+      <input id="id_username" type="file" name="obj_name" size="24" />
+      <input id="upload_btn" type="submit" value="upload">
+    </fieldset>
+  </form>
 </div>
-</fieldset>
-</form>

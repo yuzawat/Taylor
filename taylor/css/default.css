@@ -1,3 +1,25 @@
+a{
+  position: relative;
+  left: 1px;
+  top: 2px;
+  color: #504f4f;
+  text-decoration: none;
+}
+a:hover{
+  position: relative;
+  right: 1px;
+  bottom: 2px;
+  color: #504f4f;
+  text-shadow: 1px 2px 1px #bbbaba;
+  text-decoration: none;
+  -moz-transition: all 0.2s linear 0;
+  -webkit-transition: all 0.2s linear 0;
+}
+
+ul{
+    list-style-type: none; 
+}
+
 img.login_icon {
     width: 400px;
     height: 400px;
@@ -6,22 +28,176 @@ img.login_icon {
 img.cont_icon {
     width: 240px;
     height: 240px;
+    vertical-align: middle;
 }
 
 img.obj_icon {
     width: 240px;
     height: 240px;
+    vertical-align: middle;
 }
 
-.navi_container {
-    display: box;
+div.login_facecover{
     display: -moz-box;
-    display: -o-box;
     display: -webkit-box;
-    display: -ms-box;
-    box-orient: horizontal;
-    -moz-box-orient: horizontal;
-    -o-box-orient: horizontal;
-    -webkit-box-orient: horizontal;
-    -ms-box-orient: horizontal;
+}
+
+div.login_image{
+    width:401px;
+    min-height: 401px;
+}
+
+ul.login_form{
+    list-style-type: none;
+}
+
+fieldset.login_form {
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    font-size: 0.7em;
+}
+
+div.login_form{
+    min-height: 440px;
+    display:-moz-box;
+    display:-webkit-box;
+    display:-o-box;
+    display:-ms-box;
+    -moz-box-align:center;
+    -webkit-box-align:center;
+    -o-box-align:center;
+    -ms-box-align:center;
+}
+
+h1.title{
+    margin:0 0 30px 0;
+    padding:12px 10px;
+    background:rgba(0,0,0,0.3);
+    color:#FFF;
+    -webkit-border-radius:4px;
+    -moz-border-radius:4px;
+    border-radius:4px;
+    text-shadow:1px 1px 2px #333;
+    box-shadow:inset -1px -1px 2px rgba(0,0,0, 0.6),inset 1px 1px 2px rgba(255,255,255,0.8);
+    font-size: 1.1em;
+}
+
+p.message{
+}
+
+ul#navigate{
+    padding:0;
+    margin:0;
+    height:2em;
+}
+#navigate li{
+    padding: 0; 
+    margin: 0;
+    height:1em;
+    float: left;
+}
+#navigate a{
+    display: block;
+    width: 80px;
+    border-bottom: 1px dotted #555;
+    text-decoration: none;
+    color: #555;
+    padding: 0 0 0 20px;
+    margin: 0 2px;
+    font-size: small;
+    text-align: left;
+}
+
+fieldset.metadata_edit {
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+}
+
+fieldset.create_cont {
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    width: 20em;
+    margin-bottom: 2em;
+    margin-left: 5em;
+}
+
+fieldset.upload_obj {
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    width: 20em;
+    margin-bottom: 2em;
+    margin-left: 5em;
+}
+
+ul.status{
+    list-style-type: none;
+}
+
+ul.cont_action{
+    list-style-type: none;
+}
+
+ul.obj_action{
+    list-style-type: none;
+}
+
+#container td{
+    vertical-align: middle;
+}
+
+table.containers{
+    width: 95%;
+}
+table.objects{
+    width: 95%;
+}
+th.cont_name{
+    text-indent: 2em;
+    text-align: left;
+}
+th.cont_status{
+    text-indent: 2em;
+    text-align: left;
+}
+th.cont_action{
+    text-indent: 2em;
+    text-align: left;
+}
+th.obj_name{
+    text-indent: 2em;
+    text-align: left;
+}
+th.obj_status{
+    text-indent: 2em;
+    text-align: left;
+}
+th.obj_action{
+    text-indent: 2em;
+    text-align: left;
+}
+tr.cont_list{
+}
+tr.obj_list{
+}
+
+td.cont_name{
+}
+td.cont_status{
+  color: #504f4f;
+}
+td.cont_action{
+  color: #504f4f;
+}
+
+td.obj_name{
+}
+td.obj_status{
+  color: #504f4f;
+}
+td.obj_action{
+  color: #504f4f;
 }

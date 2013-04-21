@@ -1,27 +1,27 @@
 <article class="login">
-<div class="login_image">
-<img src="${top}/image/cabinet.png" class="login_icon">
-</div>
-<div class="login_form">
-<form action="" method="post">
-<fieldset>
-<ul>
-<input type="hidden" name="method" value="Login" id="id_method" />
-<li>
-<label for="id_username">UserName</label>
-<input id="id_username" type="text" name="username" maxlength="255" />
-</li>
-<li>
-<label for="id_password">Password</label>
-<input id="id_password" type="password" name="password" maxlength="255" />
-</li>
-<li>
-<div class="button">
-<input id="home_login_btn" type="submit" value="Login">
-</div>
-</li>
-</ul>
-</fieldset>
-</form>
+<div class="login_facecover">
+  <div class="login_image">
+    <img src="${top}/image/cabinet.png" class="login_icon" alt="login_image">
+  </div>
+  <div class="login_form">
+    <form action="" method="post">
+      <fieldset class="login_form">
+	<ul class="login_form">
+	  <input type="hidden" name="method" value="Login" id="id_method" />
+	  <li>
+	    <input id="id_username" type="text" name="username" size="24" maxlength="255" placeholder="Input Username" />
+	  </li>
+	  <li>
+	    <input id="id_password" type="password" name="password" size="24" maxlength="255"  placeholder="Input Password"/>
+	  </li>
+	  <li>
+	    <div class="login_button">
+	      <input id="home_login_btn" type="submit" value="Login">
+	    </div>
+	  </li>
+	</ul>
+      </fieldset>
+    </form>
+  </div>
 </div>
 </article>

@@ -135,7 +135,6 @@ class Taylor(object):
         self.title = conf.get('taylor_title', 'Taylor')
         self.tmpl = TaylorTemplate()
         self.token_bank = {}
-        self.lang = 'en'
 
     @wsgify
     def __call__(self, req):
@@ -170,9 +169,6 @@ class Taylor(object):
         status = self.token_bank.get(token, None)
         if status:
             storage_url = status.get('url', None)
-
-        # get LANG
-        self.lang = req.headers.get('Accept-Language', 'en,').split(',')[0]
 
         # login page
         if req.path == login_path:
@@ -238,13 +234,14 @@ class Taylor(object):
                 print 'Error: %s' % err
         token = req.cookies('_token')
         status = self.token_bank.get(token, None) if token else None
+        lang = req.headers.get('Accept-Language', 'en,').split(',')[0]
         msg = ''
         if status:
             msg = status.get('msg', '')
         resp = Response(charset='utf8')
         resp.app_iter = self.tmpl({'ptype': 'login',
                                    'top': self.page_path,
-                                   'title': self.title, 'lang': self.lang,
+                                   'title': self.title, 'lang': lang,
                                    'message': msg})
         if msg:
             self.token_bank[token].update({'msg': ''})
@@ -325,11 +322,12 @@ class Taylor(object):
         if len(path.split('/')) <= 2:
             path = urlparse(storage_url).path
         vrs, acc, cont, obj = split_path(path, 1, 4, True)
+        lang = req.headers.get('Accept-Language', 'en,').split(',')[0]
         path_type = len([i for i in [vrs, acc, cont, obj] if i])
         base = self.add_prefix(urlparse(storage_url).path)
         status = self.token_bank.get(token, None)
         msg = ''
-        meta_edit = req.params_alt().get('meta_edit', None)
+        meta_edit = req.params_alt().get('meta_edit', '')
         if status:
             msg = status.get('msg', '')
         if path_type == 2: ### account
@@ -346,7 +344,7 @@ class Taylor(object):
                             max_age=self.cookie_max_age)
             resp.app_iter = self.tmpl({'ptype': 'containers',
                                        'title': self.title,
-                                       'lang': self.lang,
+                                       'lang': lang,
                                        'top': self.page_path,
                                        'account': acc,
                                        'message': msg,
@@ -373,7 +371,7 @@ class Taylor(object):
             base = '/'.join(base.split('/') + [cont])
             resp.app_iter = self.tmpl({'ptype': 'objects',
                                        'title': self.title,
-                                       'lang': self.lang,
+                                       'lang': lang,
                                        'top': self.page_path,
                                        'account': acc,
                                        'container': cont,

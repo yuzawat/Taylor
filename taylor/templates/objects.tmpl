@@ -1,83 +1,83 @@
 <article class="objects">
-<%include file="upload_obj.tmpl"/>
-<table class="objects">
-<tr>
-<th>Name</th>
-<th>Status/Metadata</th>
-<th>Action</th>
-</tr>
-% for i in objects:
-<tr>
-  <td id="object">
-      <a href="${base}/${i['name']}">
-      	 <img src="${top}/image/file.png" class="obj_icon" alt="${i['name']}">${i['name']}
+  <%include file="upload_obj.tmpl"/>
+  <table class="objects">
+    <tr class="obj_list">
+      <th class="obj_name">Name</th>
+      <th class="obj_status">Status/Metadata</th>
+      <th class="obj_action">Action</th>
+    </tr>
+    % for i in objects:
+    <tr class="obj_list">
+      <td class="obj_name">
+	<a href="${base}/${i['name']}" class="obj_name">
+      	  <img src="${top}/image/file.png" class="obj_icon" alt="${i['name']} icon">${i['name']}
       </a></td>
-  <td id="status">
-    <ul>
-      <li>Content-Type: ${i['content_type']}</li>
-      <li>Size: ${i['bytes']}</li>
-      <li>Last-modified: ${i['last_modified']}</li>
-      % for j in object_meta[i['name']].keys():
-      <li>${j}: ${object_meta[i['name']][j]}</li>
-      % endfor
-    </ul>
-  </td>
-  <td id="actions">
-    <ul>
-      <li>
-      <a href="${base}/${i['name']}?_action=delete&_confirm=true">Delete</a>
-      </li>
-      <li>
-      <form action="" method="post">
-      	    <input type="hidden" name="_action" value="copy" id="copy_obj" />
-	    <input type="hidden" name="from_object" value="${i['name']}" id="from_obj" />
-	    <input type="submit" value="Copy">
-      	    <select name="to_container" size="1">
-	    % for k in cont_names:
-	    <option value=${k}>${k}</option>
-	    % endfor
-	    </select>
- 	    <input type="text" name="to_object" size="12" maxlength="256">
-      </form>
-      </li>
-      <li>
-% if i['name'] == meta_edit:
-      <li><a href="${base}">Stop editing MetaData</a></li>
-% else:
-      <a href="${base}?meta_edit=${i['name']}">Edit MetaData</a>
-% endif
-      </li>
-    </ul>
-  </td>
-</tr>
-% if i['name'] == meta_edit:
-<tr>
-<td colspan="3">
-  <h3>Metadata Edit</h3>
-  <form action="" method="post">
-  <input type="hidden" name="_action" value="metadata">
-  <input type="hidden" name="object_name" value="${i['name']}">
-  <fieldset>
-  <table>
-    <tr><th>Key</th><th>Value</th><th>Remove</th></tr>
-% for m in object_meta[i['name']].keys():
-    <tr><td>${m}</td><td>${object_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-meta-${m.lower()}"></td></tr>
-    <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[i['name']][m]}">
-% endfor
-% for n in range(3):
-    <tr><td><input type="text" name="meta_key${n}" size="12" maxlength="256"></td>
-    <td><input type="text" name="meta_val${n}" size="24" maxlength="256"></td><td></td></tr>
-% endfor
+      <td class="obj_status">
+	<ul class="status">
+	  <li class="default_status">Content-Type: ${i['content_type']}</li>
+	  <li class="default_status">Size: ${i['bytes']}</li>
+	  <li class="default_status">Last-modified: ${i['last_modified']}</li>
+	  % for j in object_meta[i['name']].keys():
+	  <li class="metadata">${j}: ${object_meta[i['name']][j]}</li>
+	  % endfor
+	</ul>
+      </td>
+      <td class="obj_action">
+	<ul class="obj_action">
+	  <li>
+	    <a href="${base}/${i['name']}?_action=delete&_confirm=true" class="cont_action">Delete</a>
+	  </li>
+	  <li>
+	    <form action="" method="post">
+      	      <input type="hidden" name="_action" value="copy" id="copy_obj" />
+	      <input type="hidden" name="from_object" value="${i['name']}" id="from_obj" />
+	      <input type="submit" value="Copy"> to
+      	      <select name="to_container" size="1">
+		% for k in cont_names:
+		<option value=${k}>${k}</option>
+		% endfor
+	      </select>
+ 	      <input type="text" name="to_object" size="20" maxlength="256" placeholder="New objname if change">
+	    </form>
+	  </li>
+	  <li>
+	    % if i['name'] == meta_edit:
+	  <li><a href="${base}" class="cont_action">Stop editing MetaData</a></li>
+	  % else:
+	  <a href="${base}?meta_edit=${i['name']}" class="cont_action">Edit MetaData</a>
+	  % endif
+	  </li>
+	</ul>
+      </td>
+    </tr>
+    % if i['name'] == meta_edit:
+    <tr>
+      <td colspan="3">
+	<form action="" method="post">
+	  <input type="hidden" name="_action" value="metadata">
+	  <input type="hidden" name="object_name" value="${i['name']}">
+	  <fieldset class="meta_edit">
+	    <legend>Metadata Edit</legend>
+	    <table>
+	      <tr><th>Key</th><th>Value</th><th>Remove</th></tr>
+	      % for m in object_meta[i['name']].keys():
+	      <tr><td>${m}</td><td>${object_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-meta-${m.lower()}"></td></tr>
+	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[i['name']][m]}">
+	      % endfor
+	      % for n in range(3):
+	      <tr><td><input type="text" name="meta_key${n}" size="12" maxlength="256"></td>
+		<td colspan="2"><input type="text" name="meta_val${n}" size="24" maxlength="256"></td></tr>
+	      % endfor
+	    </table>
+	    <input type="submit" value="Commit">
+	  </fieldset>
+	</form>
+      </td>
+    </tr>
+    % endif
+    % endfor
   </table>
-  <input type="submit" value="Commit">
-  </fieldset>
-  </form>
-</td>
-</tr>
-% endif
-% endfor
-</table>
-% if len(objects)!=0:
-<%include file="upload_obj.tmpl"/>
-% endif
+  % if len(objects)!=0:
+  <%include file="upload_obj.tmpl"/>
+  % endif
 </article>
