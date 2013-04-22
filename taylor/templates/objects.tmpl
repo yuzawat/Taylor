@@ -1,5 +1,16 @@
 <article class="objects">
-  <%include file="upload_obj.tmpl"/>
+  % if not any([delete_confirm, meta_edit]):
+  <div class="upload_obj">
+    <form action="${base}" method="post" enctype="multipart/form-data">
+      <fieldset class="upload_obj">
+	<legend>Upload Object</legend>
+	<input type="hidden" name="_action" value="obj_create" id="create_obj" />
+	<input id="id_username" type="file" name="obj_name" size="24" />
+	<input id="upload_btn" type="submit" value="upload">
+      </fieldset>
+    </form>
+  </div>
+  % endif
   <table class="objects">
     <tr class="obj_list">
       <th class="obj_name">Name</th>
@@ -25,11 +36,15 @@
       <td class="obj_action">
 	<ul class="obj_action">
 	  <li>
-	    <a href="${base}/${i['name']}?_action=delete&_confirm=true" class="cont_action">Delete</a>
+	    % if i['name'] == delete_confirm:
+	    <a href="${base}" class="cont_action">Stop delete confirming</a>
+	    % else:
+	    <a href="${base}?delete_confirm=${i['name']}" class="cont_action">Delete</a>
+	    % endif
 	  </li>
 	  <li>
-	    <form action="" method="post">
-      	      <input type="hidden" name="_action" value="copy" id="copy_obj" />
+	    <form action="${base}/${i['name']}" method="post">
+      	      <input type="hidden" name="_action" value="obj_copy" id="copy_obj" />
 	      <input type="hidden" name="from_object" value="${i['name']}" id="from_obj" />
 	      <input type="submit" value="Copy"> to
       	      <select name="to_container" size="1">
@@ -41,32 +56,54 @@
 	    </form>
 	  </li>
 	  <li>
-	    % if i['name'] == meta_edit:
-	  <li><a href="${base}" class="cont_action">Stop editing MetaData</a></li>
-	  % else:
-	  <a href="${base}?meta_edit=${i['name']}" class="cont_action">Edit MetaData</a>
-	  % endif
+ 	    % if i['name'] == meta_edit:
+	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
+	    % else:
+	    <a href="${base}?meta_edit=${i['name']}" class="cont_action">Edit MetaData</a>
+	    % endif
 	  </li>
 	</ul>
       </td>
     </tr>
+    <tr>
+    % if i['name'] == delete_confirm:
+      <td colspan="3">
+	  <fieldset class="delete_confirm">
+	    <legend>Delete ${i['name']} Confirm</legend>
+	    <p>Are you sure?</p>
+	    <form action="${base}/${i['name']}" method="post">
+	      <input type="hidden" name="_action" value="obj_delete">
+	      <input type="hidden" name="object_name" value="${i['name']}">
+	      <input type="submit" value="Ok">
+	    </form>
+	    <input type="submit" value="Cancel">
+	  </fieldset>
+      </td>
+    </tr>
+    % endif
     % if i['name'] == meta_edit:
     <tr>
       <td colspan="3">
-	<form action="" method="post">
-	  <input type="hidden" name="_action" value="metadata">
+	<form action="${base}/${i['name']}" method="post">
+	  <input type="hidden" name="_action" value="obj_metadata">
 	  <input type="hidden" name="object_name" value="${i['name']}">
 	  <fieldset class="meta_edit">
 	    <legend>Metadata Edit</legend>
 	    <table>
-	      <tr><th>Key</th><th>Value</th><th>Remove</th></tr>
+	      <tr><th>Key</th><th>Value</th><th>
+		  % if len(object_meta[i['name']]) != 0:
+		  Remove
+		  % endif
+	      </th></tr>
 	      % for m in object_meta[i['name']].keys():
-	      <tr><td>${m}</td><td>${object_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-meta-${m.lower()}"></td></tr>
+	      <tr><td>${m}</td><td>${object_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
 	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[i['name']][m]}">
 	      % endfor
 	      % for n in range(3):
-	      <tr><td><input type="text" name="meta_key${n}" size="12" maxlength="256"></td>
-		<td colspan="2"><input type="text" name="meta_val${n}" size="24" maxlength="256"></td></tr>
+	      <tr><td><input type="text" name="object_meta_key${n}" size="12" maxlength="256"
+			     placeholder="New object metadata name"></td>
+		<td colspan="2"><input type="text" name="object_meta_val${n}" size="24" maxlength="256"
+				       placeholder="Object metadata value"></td></tr>
 	      % endfor
 	    </table>
 	    <input type="submit" value="Commit">
@@ -77,7 +114,16 @@
     % endif
     % endfor
   </table>
-  % if len(objects)!=0:
-  <%include file="upload_obj.tmpl"/>
+  % if len(objects)!=0 and not any([delete_confirm, meta_edit]):
+  <div class="upload_obj">
+    <form action="${base}" method="post" enctype="multipart/form-data">
+      <fieldset class="upload_obj">
+	<legend>Upload Object</legend>
+	<input type="hidden" name="_action" value="obj_create" id="create_obj" />
+	<input id="id_username" type="file" name="obj_name" size="24" />
+	<input id="upload_btn" type="submit" value="upload">
+      </fieldset>
+    </form>
+  </div>
   % endif
 </article>

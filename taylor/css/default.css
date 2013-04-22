@@ -83,7 +83,11 @@ h1.title{
     font-size: 1.1em;
 }
 
-p.message{
+p#message{
+    text-align:center;
+    font-size:3em;
+    color:rgba(255, 6, 6, 0.8);
+    text-shadow:1px 1px 2px rgb(255, 160, 160);
 }
 
 ul#navigate{
@@ -109,7 +113,7 @@ ul#navigate{
     text-align: left;
 }
 
-fieldset.metadata_edit {
+fieldset.metadata_edit, fieldset.acl_edit, fieldset.delete_confirm {
     -webkit-border-radius: 8px;
     -moz-border-radius: 8px;
     border-radius: 8px;
@@ -200,4 +204,8 @@ td.obj_status{
 }
 td.obj_action{
   color: #504f4f;
+}
+
+p.message{
+    text
 }

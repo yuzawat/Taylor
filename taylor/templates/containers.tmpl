@@ -1,5 +1,16 @@
 <article class="containers">
-  <%include file="create_cont.tmpl"/>
+  % if not any([acl_edit, delete_confirm, meta_edit]):
+  <div class="create_cont">
+    <form action="${base}" method="post">
+      <fieldset class="create_cont">
+  	<legend>New Container</legend>
+  	<input type="hidden" name="_action" value="cont_create" id="create_cont" />
+  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="1024" placeholder="New Container Name"/>
+  	<input id="cont_btn" type="submit" value="Create">
+      </fieldset>
+    </form>
+  </div>
+  % endif
   <table class="containers">
     <tr class="cont_list">
       <th class="cont_name">Name</th>
@@ -7,7 +18,6 @@
       <th class="cont_action">Action</th>
     </tr>
     % for i in containers:
-    <a name="${i['name']}"></a>
     <tr class="cont_list">
       <td class="cont_name">
 	<a href="${base}/${i['name']}" class="obj_name">
@@ -15,56 +25,154 @@
 	</a>
       </td>
       <td class="cont_status">
-	<ul class="status">
-	  <li class="defalt_status">Count: ${i['count']}</li>
-	  <li class="defalt_status">Size: ${i['bytes']}</li>
-	  % for j in container_meta[i['name']].keys():
-	  <li class="defalt_status">${j}: ${container_meta[i['name']][j]}</li>
-	  % endfor
-	</ul>
+    	<ul class="status">
+    	  <li class="default_status">Count: ${i['count']}</li>
+    	  <li class="default_status">Size: ${i['bytes']}</li>
+	  % if container_acl.get(i['name'], None):
+	  % if container_acl[i['name']].get('read',None):
+    	  <li class="default_status">Read ACL: ${container_acl[i['name']].get('read','')}<li>
+	  % endif
+	  % if container_acl[i['name']].get('write', None):
+    	  <li class="default_status">Write ACL: ${container_acl[i['name']].get('write','')}<li>
+	  % endif
+	  % endif
+    	  % for j in container_meta[i['name']].keys():
+    	  <li class="default_status">${j}: ${container_meta[i['name']][j]}</li>
+    	  % endfor
+    	</ul>
       </td>
       <td class="cont_action">
-	<ul class="cont_action">
-	  <li>
-	    <a href="${base}/${i['name']}?_action=delete&_confirm=true" class="cont_action">Delete</a>
-	  </li>
-	  <li><a href="${base}?acl_edit=${i['name']}" class="cont_action">Edit ACL</a></li>
-	  % if i['name'] == meta_edit:
-	  <li><a href="${base}" class="cont_action">Stop editing MetaData</a></li>
-	  % else:
-	  <li><a href="${base}?meta_edit=${i['name']}#${i['name']}" class="cont_action">Edit Metadata</a></li>
-	  % endif
-	</ul>
+    	<ul class="cont_action">
+    	  <li>
+    	    % if i['name'] == delete_confirm:
+    	    <a href="${base}" class="cont_action">Stop delete confirming</a>
+    	    % else:
+    	    <a href="${base}?delete_confirm=${i['name']}" class="cont_action">Delete</a>
+    	    % endif
+    	  </li>
+    	  <li>
+    	    % if i['name'] == acl_edit:
+    	    <a href="${base}" class="cont_action">Stop editing ACL</a>
+    	    % else:
+    	    <a href="${base}?acl_edit=${i['name']}" class="cont_action">Edit ACL</a>
+    	    % endif
+    	  </li>
+    	  <li>
+    	    % if i['name'] == meta_edit:
+    	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
+    	    % else:
+    	    <a href="${base}?meta_edit=${i['name']}" class="cont_action">Edit Metadata</a>
+    	    % endif
+    	  </li>
+    	</ul>
       </td>
     </tr>
+    % if i['name'] == delete_confirm:
+    <tr>
+      <td colspan="3">
+    	<form action="${base}/${i['name']}" method="post">
+    	  <input type="hidden" name="_action" value="cont_delete">
+    	  <input type="hidden" name="container_name" value="${i['name']}">
+    	  <fieldset class="delete_confirm">
+    	    <legend>Delete ${i['name']} Confirm</legend>
+    	    <p>Are you sure?</p>
+    	    <input type="submit" value="Ok">
+    	    <input type="submit" value="Cancel">
+    	  </fieldset>
+    	</form>
+      </td>
+    </tr>
+    % endif
+    % if i['name'] == acl_edit:
+    <tr>
+      <td colspan="3">
+    	<form action="${base}/${i['name']}" method="post">
+    	  <input type="hidden" name="_action" value="cont_acl">
+    	  <input type="hidden" name="container_name" value="${i['name']}">
+    	  <fieldset class="acl_edit">
+    	    <legend>ACL Edit</legend>
+    	    <table>
+    	      <tr><th>Type</th><th>Value</th><th>Remove</th></tr>
+    	      <tr>
+    		<td>Read</td>
+    		<td>
+    		  <input type="text" name="x-container-read" size="24"
+			 % if container_acl.get(i['name'], None):
+    			 value="${container_acl[i['name']].get('read', '')}"
+			 % else:
+			 value=""
+			 % endif
+			 placeholder="Read-ACL Value">
+    		</td>
+    		<td>
+    		  <input type="checkbox" name="remove-x-container-read">
+    		</td>
+    	      </tr>
+    	      <tr>
+    		<td>Write</td>
+    		<td>
+    		  <input type="text" name="x-container-write" size="24"
+			 % if container_acl.get(i['name'], None): 
+    			 value="${container_acl[i['name']].get('write', '')}"
+			 % else:
+			 value=""
+			 % endif
+			 placeholder="Write-ACL Value">
+    		</td>
+    		<td>
+    		  <input type="checkbox" name="remove-x-container-write">
+    		</td>
+    	      </tr>
+    	    </table>
+    	    <input type="submit" value="Commit">
+    	  </fieldset>
+    	</form>
+      </td>
+    </tr>
+    % endif
     % if i['name'] == meta_edit:
     <tr>
       <td colspan="3">
-	<form action="" method="post">
-	  <input type="hidden" name="_action" value="metadata">
-	  <input type="hidden" name="container_name" value="${i['name']}">
-	  <fieldset class="metadata_edit">
-	    <legend>Metadata Edit</legend>
-	    <table>
-	      <tr><th>Key</th><th>Value</th><th>Remove</th></tr>
-	      % for m in container_meta[i['name']].keys():
-	      <tr><td>${m}</td><td>${container_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
-	      <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[i['name']][m]}">
-	      % endfor
-	      % for n in range(3):
-	      <tr><td><input type="text" name="container_meta_key${n}" size="12" maxlength="256"></td>
-		<td colspan="2"><input type="text" name="container_meta_val${n}" size="24" maxlength="256"></td></tr>
-	      % endfor
-	    </table>
-	    <input type="submit" value="Commit">
-	  </fieldset>
-	</form>
+    	<form action="${base}/${i['name']}" method="post">
+    	  <input type="hidden" name="_action" value="cont_metadata">
+    	  <input type="hidden" name="container_name" value="${i['name']}">
+    	  <fieldset class="metadata_edit">
+    	    <legend>Metadata Edit</legend>
+    	    <table>
+    	      <tr><th>Key</th><th>Value</th><th>
+    		  % if len(container_meta[i['name']]) != 0:
+    		  Remove
+    		  % endif
+    	      </th></tr>
+    	      % for m in container_meta[i['name']].keys():
+    	      <tr><td>${m}</td><td>${container_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
+    	      <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[i['name']][m]}">
+    	      % endfor
+    	      % for n in range(3):
+    	      <tr><td><input type="text" name="container_meta_key${n}" size="12" maxlength="256"
+			     placeholder="New container metadata name"></td>
+    		<td colspan="2"><input type="text" name="container_meta_val${n}" size="24" maxlength="256"
+				       placeholder="Container metadata value"></td></tr>
+    	      % endfor
+    	    </table>
+    	    <input type="submit" value="Commit">
+    	  </fieldset>
+    	</form>
       </td>
     </tr>
     % endif
     % endfor
   </table>
-  % if len(containers)!=0:
-  <%include file="create_cont.tmpl"/>
+  % if len(containers)!=0 and not any([acl_edit, delete_confirm, meta_edit]):
+  <div class="create_cont">
+    <form action="${base}" method="post">
+      <fieldset class="create_cont">
+  	<legend>New Container</legend>
+  	<input type="hidden" name="_action" value="cont_create" id="create_cont" />
+  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="1024" placeholder="New Container Name"/>
+  	<input id="cont_btn" type="submit" value="Create">
+      </fieldset>
+    </form>
+  </div>
   % endif
 </article>

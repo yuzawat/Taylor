@@ -224,10 +224,11 @@ class Taylor(object):
             except KeyError, err:
                 print 'Key Error: %s' % err
             except ClientException, err:
+                lang = req.headers.get('Accept-Language', 'en,').split(',')[0]
                 resp = Response(charset='utf8')
                 resp.app_iter = self.tmpl({'ptype': 'login',
                                            'top': self.page_path,
-                                           'title': self.title, 'lang': self.lang,
+                                           'title': self.title, 'lang': lang,
                                            'message': 'Login Failed'})
                 return resp
             except Exception, err:
@@ -253,67 +254,49 @@ class Taylor(object):
         vrs, acc, cont, obj = split_path(path, 1, 4, True)
         path_type = len([i for i in [vrs, acc, cont, obj] if i])
         params = req.params_alt()
-        if params.get('_action') == 'create':
-            print 'path_type: %s' % path_type
+        action = params.get('_action')
+        if action == 'cont_create' or action == 'obj_create':
             if self.action_routine(req, storage_url, token) == HTTP_CREATED:
                 self.token_bank[token].update({'msg': 'Create Success'})
             else:
                 self.token_bank[token].update({'msg': 'Create Failed'})
-            if path_type == 3:
-                loc = self.cont_path(path)
-            else:
+            if action == 'cont_create':
                 loc = storage_url
-        if params.get('_action') == 'delete':
+            else:
+                loc = self.cont_path(path)
+        if action == 'cont_delete' or action == 'obj_delete':
             if self.action_routine(req, storage_url, token) == HTTP_NO_CONTENT:
                 self.token_bank[token].update({'msg': 'Delete Success'})
             else:
                 self.token_bank[token].update({'msg': 'Delete Failed'})
-            if path_type == 4:
-                loc = self.cont_path(path)
-            else:
+            if action == 'cont_delete':
                 loc = storage_url
-        if params.get('_action') == 'copy':
+            else:
+                loc = self.cont_path(path)
+        if action == 'obj_copy':
             if self.action_routine(req, storage_url, token) == HTTP_CREATED:
                 self.token_bank[token].update({'msg': 'Copy Success'})
             else:
                 self.token_bank[token].update({'msg': 'Copy Failed'})
             loc = self.cont_path(path)
-        if params.get('_action') == 'metadata':
-            if self.action_routine(req, storage_url, token) == HTTP_CREATED:
-                self.token_bank[token].update({'msg': 'Metadata update Success'})
+        if action == 'cont_metadata' or action == 'obj_metadata' or action == 'cont_acl':
+            if self.action_routine(req, storage_url, token) == HTTP_ACCEPTED:
+                if action == 'cont_acl':
+                    self.token_bank[token].update({'msg': 'ACL update Success'})
+                else:
+                    self.token_bank[token].update({'msg': 'Metadata update Success'})
             else:
-                self.token_bank[token].update({'msg': 'Metadata update Failed'})
-            if path_type == 4:
-                loc = self.cont_path(path)
-            else:
+                if action == 'cont_acl':
+                    self.token_bank[token].update({'msg': 'ACL update Failed'})
+                else:
+                    self.token_bank[token].update({'msg': 'Metadata update Failed'})
+            if action == 'cont_metadata' or action == 'cont_acl':
                 loc = storage_url
+            else:
+                loc = self.cont_path(path)
         resp = HTTPFound(location=self.add_prefix(loc))
         resp.set_cookie('_token', token, path=self.page_path,
                         max_age=self.cookie_max_age)
-        return resp
-
-    def confirm_page(self, req, storage_url, token):
-        """ delete confirming page """
-        if req.method == 'POST':
-            try:
-                delete_ok = req.params_alt().get('password')
-            except KeyError, err:
-                print 'Key Error: %s' % err
-            if delete_ok:
-                if self.action_routine(req, storage_url, token) == HTTP_NO_CONTENT:
-                    self.token_bank[token].update({'msg': 'Delete Success'})
-                else:
-                    self.token_bank[token].update({'msg': 'Delete Failed'})
-            else:
-                resp = HTTPFound(location=self.add_prefix(storage_url))
-                resp.set_cookie('_token', token, path=self.page_path,
-                                max_age=self.cookie_max_age)
-                return resp
-        resp = Response(charset='utf8')
-        resp.app_iter = self.tmpl({'ptype': 'confirm',
-                                   'top': self.page_path,
-                                   'title': self.title, 'lang': self.lang,
-                                   'message': ''})
         return resp
 
     def page(self, req, storage_url, token):
@@ -327,7 +310,11 @@ class Taylor(object):
         base = self.add_prefix(urlparse(storage_url).path)
         status = self.token_bank.get(token, None)
         msg = ''
+        delete_confirm = req.params_alt().get('delete_confirm', '')
+        acl_edit = req.params_alt().get('acl_edit', '')
         meta_edit = req.params_alt().get('meta_edit', '')
+        print 'me %s ' % meta_edit
+
         if status:
             msg = status.get('msg', '')
         if path_type == 2: ### account
@@ -336,9 +323,21 @@ class Taylor(object):
             except ClientException, err:
                 pass
             cont_meta = {}
+            cont_acl = {}
+            edit_param = [acl_edit, delete_confirm, meta_edit]
+            if any(edit_param):
+                edit_cont = filter(None, edit_param)[0]
+                cont_list = [cont for cont in cont_list if cont['name'] == edit_cont]
             for i in cont_list:
                 meta = head_container(storage_url, token, i['name'])
-                cont_meta[i['name']] =  dict([(m[len('x-container-meta-'):].capitalize(), meta[m]) for m in meta.keys() if m.startswith('x-container-meta')])
+                cont_meta[i['name']] =  dict([(m[len('x-container-meta-'):].capitalize(), 
+                                               meta[m]) 
+                                              for m in meta.keys() 
+                                              if m.startswith('x-container-meta')])
+                cont_acl[i['name']] = dict([(m[len('x-container-'):], meta[m])
+                                            for m in meta.keys()
+                                            if m.startswith('x-container-read') 
+                                            or m.startswith('x-container-write')])
             resp = Response(charset='utf8')
             resp.set_cookie('_token', token, path=self.page_path,
                             max_age=self.cookie_max_age)
@@ -351,6 +350,9 @@ class Taylor(object):
                                        'base': base,
                                        'containers': cont_list,
                                        'container_meta': cont_meta,
+                                       'container_acl': cont_acl,
+                                       'delete_confirm': delete_confirm,
+                                       'acl_edit': acl_edit,
                                        'meta_edit': meta_edit})
             self.token_bank[token].update({'msg': ''})
             return resp
@@ -362,6 +364,10 @@ class Taylor(object):
                 pass
             obj_meta = {}
             cont_names = [i['name'] for i in cont_list]
+            edit_param = [acl_edit, delete_confirm, meta_edit]
+            if any(edit_param):
+                edit_obj = filter(None, edit_param)[0]
+                obj_list = [obj for obj in obj_list if obj['name'] == edit_obj]
             for i in obj_list:
                 meta = head_object(storage_url, token, cont, i['name'])
                 obj_meta[i['name']] = dict([(m[len('x-object-meta-'):].capitalize(), meta[m]) for m in meta.keys() if m.startswith('x-object-meta')])
@@ -380,6 +386,8 @@ class Taylor(object):
                                        'objects': obj_list,
                                        'object_meta': obj_meta,
                                        'cont_names': cont_names,
+                                       'delete_confirm': delete_confirm,
+                                       'acl_edit': acl_edit,
                                        'meta_edit': meta_edit})
             self.token_bank[token].update({'msg': ''})
             return resp
@@ -427,11 +435,11 @@ class Taylor(object):
         """ """
         removing = [i[len('remove-'):] for i in form.keys() if i.startswith('remove-')]
         headers = {}
-        for h in [i for i in form.keys() if i.startswith('x-container-meta-') or i.startswith('x-container-meta-')]:
-            if h in removing:
-                headers.update({h: ''})
-                continue
+        for h in [i for i in form.keys() if i.startswith('x-container-meta-') or i.startswith('x-object-meta-')]:
             headers.update({h: form[h]})
+        for k in headers.keys():
+            if k in removing:
+                headers[k] = ''
         for i in range(10):
             if 'container_meta_key%s' % i in form:
                 keyname = 'x-container-meta-' + form['container_meta_key%s' % i].lower()
@@ -439,8 +447,19 @@ class Taylor(object):
                 continue
             if 'object_meta_key%s' % i in form:
                 keyname = 'x-object-meta-' + form['object_meta_key%s' % i].lower()
-                headers.update({keyname: form['object_val%s' % i]})
-        print headers
+                headers.update({keyname: form['object_meta_val%s' % i]})
+        return headers
+
+    def acl_check(self, form):
+        """ """
+        removing = [i[len('remove-'):] for i in form.keys() if i.startswith('remove-')]
+        headers = {}
+        for acl in ['x-container-read', 'x-container-write']:
+            headers.update({acl: form.get(acl, 'blank')})
+            if acl in removing:
+                headers.update({acl: ''})
+            if headers[acl] == 'blank':
+                del(headers[acl])
         return headers
 
     def action_routine(self, req, storage_url, token):
@@ -460,66 +479,62 @@ class Taylor(object):
         from_obj = params.get('from_object', None)
         to_cont = params.get('to_container', None)
         to_obj = params.get('to_object', None)
-        md_headers = self.metadata_check(params)
-
-        if path_type == 2: ### account
-            print 'acc'
-            if action == 'list':
-                (acct_status, cont_list) = get_account(storage_url, token, marker=marker, limit=lines)
-                #resp.app_iter = [json.dumps(c) for c in cont_list]
-            if action == 'create':
-                try:
-                    put_container(storage_url, token, cont)
-                except ClientException, err:
-                    return err.http_status
-                return HTTP_CREATED
-            if action == 'metadata':
-                print 'metadata'
-                cont = params.get('container_name')
-                try:
-                    post_container(storage_url, token, cont, md_headers)
-                except ClientException, err:
-                    return err.http_status
-                return HTTP_ACCEPTED
-        if path_type == 3: ### container
-            print 'cont'
-            if action == 'list':
-                (cont_status, obj_list) = get_container(storage_url, token, cont, marker=marker, limit=lines)
-                #resp.app_iter = [json.dumps(o) for o in obj_list]
-            if action == 'delete':
-                try:
-                    delete_container(storage_url, token, cont)
-                except ClientException, err:
-                    return err.http_status
-                return HTTP_NO_CONTENT
-            if action == 'create':
-                try:
-                    put_object(storage_url, token, cont, obj_name, obj_fp)
-                except ClientException, err:
-                    return err.http_status
-                return HTTP_CREATED
-            if action is 'metadata':
-                obj = params.get('object_name')
-                post_object(storage_url, token, cont, obj, md_headers)
-            if action == 'copy':
-                try:
-                    copy_object(storage_url, token, cont, from_obj, to_cont, to_obj)
-                except ClientException, err:
-                    return err.http_status
-                return HTTP_CREATED
-        if path_type == 4: ### object
-            print 'obj'
-            if action == 'get':
-                (obj_status, hunk) = get_object(storage_url, token, cont, obj)
-                #resp.headerlist = obj_status.items()
-                #resp.body_file = hunk
-            if action == 'delete':
-                try:
-                    delete_object(storage_url, token, cont, obj)
-                except ClientException, err:
-                    return err.http_status
-                return HTTP_NO_CONTENT
-
+        headers = self.metadata_check(params)
+        headers.update(self.acl_check(params))
+        print headers
+        
+        if action == 'cont_list':
+            (acct_status, cont_list) = get_account(storage_url, token, marker=marker, limit=lines)
+            #resp.app_iter = [json.dumps(c) for c in cont_list]
+        if action == 'cont_create':
+            try:
+                put_container(storage_url, token, cont)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_CREATED
+        if action == 'obj_list':
+            (cont_status, obj_list) = get_container(storage_url, token, cont, marker=marker, limit=lines)
+            #resp.app_iter = [json.dumps(o) for o in obj_list]
+        if action == 'cont_delete':
+            try:
+                delete_container(storage_url, token, cont)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_NO_CONTENT
+        if action == 'cont_metadata' or action == 'cont_acl':
+            try:
+                post_container(storage_url, token, cont, headers)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_ACCEPTED
+        if action == 'obj_create':
+            try:
+                put_object(storage_url, token, cont, obj_name, obj_fp)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_CREATED
+        if action == 'obj_get':
+            (obj_status, hunk) = get_object(storage_url, token, cont, obj)
+            #resp.headerlist = obj_status.items()
+            #resp.body_file = hunk
+        if action == 'obj_delete':
+            try:
+                delete_object(storage_url, token, cont, obj)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_NO_CONTENT
+        if action == 'obj_metadata':
+            try:
+                post_object(storage_url, token, cont, obj, headers)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_ACCEPTED
+        if action == 'obj_copy':
+            try:
+                copy_object(storage_url, token, cont, from_obj, to_cont, to_obj)
+            except ClientException, err:
+                return err.http_status
+            return HTTP_CREATED
 
 def filter_factory(global_conf, **local_conf):
     """Returns a WSGI filter app for use with paste.deploy."""
@@ -534,8 +549,12 @@ class TaylorTemplate(object):
     """ HTML Template """
     def __init__(self):
         tmpldir = join(abspath(dirname(__file__)), 'templates')
-        self.tmpls = TemplateLookup(directories=tmpldir)
+        self.tmpls = TemplateLookup(directories=tmpldir, output_encoding='utf-8',
+                                    encoding_errors='replace')
 
     def __call__(self, values):
-        tmpl = self.tmpls.get_template('taylor.tmpl')
-        return tmpl.render(**values)
+        try:
+            tmpl = self.tmpls.get_template('taylor.tmpl')
+            return tmpl.render(**values)
+        except:
+            return exceptions.html_error_template().render()
