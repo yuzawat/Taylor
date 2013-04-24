@@ -1,3 +1,6 @@
+<%!
+   from urllib import quote, unquote
+%>
 <article class="containers">
   % if not any([acl_edit, delete_confirm, meta_edit]):
   <div class="create_cont">
@@ -21,7 +24,7 @@
     <tr class="cont_list">
       <td class="cont_name">
 	<a href="${base}/${i['name']}" class="obj_name">
-	  <img src="${top}/image/folder.png" class="cont_icon" alt="${i['name']} icon">${i['name']}
+	  <img src="${top}/image/folder.png" class="cont_icon" alt="${unquote(i['name'])} icon">${unquote(i['name'])}
 	</a>
       </td>
       <td class="cont_status">

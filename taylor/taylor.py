@@ -129,7 +129,7 @@ class Taylor(object):
         self.page_path = conf.get('page_path', '/taylor')
         self.auth_url = conf.get('auth_url')
         self.items_per_page = int(conf.get('items_per_page', 20))
-        self.cookie_max_age = int(conf.get('cookie_max_age', 36000))
+        self.cookie_max_age = int(conf.get('cookie_max_age', 3600))
         self.path = abspath(dirname(__file__))
         self.title = conf.get('taylor_title', 'Taylor')
         self.tmpl = TaylorTemplate()
@@ -201,7 +201,7 @@ class Taylor(object):
                 return resp
         except IOError:
             return HTTPNotFound(request=req)
-
+    
     def login(self, req):
         """ create login page """
         if req.method == 'POST':
@@ -223,7 +223,7 @@ class Taylor(object):
             except KeyError, err:
                 print 'Key Error: %s' % err
             except ClientException, err:
-                lang = req.headers.get('Accept-Language', 'en,').split(',')[0]
+                lang = self.get_lang(req)
                 resp = Response(charset='utf8')
                 resp.app_iter = self.tmpl({'ptype': 'login',
                                            'top': self.page_path,
@@ -311,7 +311,7 @@ class Taylor(object):
         if len(path.split('/')) <= 2:
             path = urlparse(storage_url).path
         vrs, acc, cont, obj = split_path(path, 1, 4, True)
-        lang = req.headers.get('Accept-Language', 'en,').split(',')[0]
+        lang = self.get_lang(req)
         path_type = len([i for i in [vrs, acc, cont, obj] if i])
         base = self.add_prefix(urlparse(storage_url).path)
         status = self.token_bank.get(token, None)
@@ -419,6 +419,9 @@ class Taylor(object):
             return resp
         return HTTPFound(location=self.add_prefix(storage_url))
 
+    def get_lang(self, req):
+        return req.headers.get('Accept-Language', 'en,').split(',')[0].split(';')[0]
+
     def add_prefix(self, url):
         """ add path prefix (like '/taylor') to URL """
         p = urlsplit(url)
@@ -490,16 +493,27 @@ class Taylor(object):
         lines = int(params.get('_line', self.items_per_page))
         page = int(params.get('_page', 0))
         marker = str(params.get('_marker', ''))
-        cont = params.get('cont_name', cont)
-        obj_param = params.get('obj_name')
+        cont_param = params.get('cont_name', None)
+        if cont_param:
+            cont = quote(cont_param)
+        obj_param = params.get('obj_name', None)
         if obj_param and len(obj_param) == 2:
             obj_name, obj_fp = obj_param
+            obj = quote(obj_name)
         else:
             obj_name, obj_fp = ('', None)
         from_cont = params.get('from_container', None)
+        if from_cont:
+            cont = quote(from_cont)
         from_obj = params.get('from_object', None)
+        if from_obj:
+            obj = quote(from_obj)
         to_cont = params.get('to_container', None)
+        if to_cont:
+            to_cont = quote(to_cont)
         to_obj = params.get('to_object', None)
+        if to_obj:
+            to_obj = quote(to_obj)
         headers = self.metadata_check(params)
         headers.update(self.acl_check(params))
 
@@ -538,7 +552,7 @@ class Taylor(object):
         if action == 'obj_create':
             if obj_name:
                 try:
-                    put_object(storage_url, token, cont, obj_name, obj_fp)
+                    put_object(storage_url, token, cont, obj, obj_fp)
                 except ClientException, err:
                     return err.http_status
                 return HTTP_CREATED
@@ -561,7 +575,7 @@ class Taylor(object):
             return HTTP_ACCEPTED
         if action == 'obj_copy':
             try:
-                copy_object(storage_url, token, cont, from_obj,
+                copy_object(storage_url, token, cont, obj,
                             to_cont, to_obj)
             except ClientException, err:
                 return err.http_status

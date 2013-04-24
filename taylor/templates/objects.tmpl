@@ -1,3 +1,6 @@
+<%!
+   from urllib import quote, unquote
+%>
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
   <div class="upload_obj">
@@ -21,7 +24,7 @@
     <tr class="obj_list">
       <td class="obj_name">
 	<a href="${base}/${i['name']}" class="obj_name">
-      	  <img src="${top}/image/file.png" class="obj_icon" alt="${i['name']} icon">${i['name']}
+      	  <img src="${top}/image/file.png" class="obj_icon" alt="${unquote(i['name'])} icon">${unquote(i['name'])}
       </a></td>
       <td class="obj_status">
 	<ul class="status">
@@ -49,7 +52,7 @@
 	      <input type="submit" value="Copy"> to
       	      <select name="to_container" size="1">
 		% for k in cont_names:
-		<option value=${k}>${k}</option>
+		<option value=${k}>${unquote(k)}</option>
 		% endfor
 	      </select>
  	      <input type="text" name="to_object" size="20" maxlength="256" placeholder="New objname if change">
