@@ -27,10 +27,10 @@ Swift Built-in Object Manipulator
 Setting
 
 [pipeline:main]
-pipeline = healthcheck taylor cache tempauth proxy-server
+pipeline = catch_errors proxy-logging healthcheck cache taylor tempauth proxy-logging proxy-server
 
 [filter:taylor]
-use = egg:handle#handle
+use = egg:Taylor#taylor
 page_path = /taylor
 auth_url = http://localhost:8080/auth/v1.0
 ----------------
