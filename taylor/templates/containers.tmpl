@@ -6,7 +6,7 @@
       <fieldset class="create_cont">
   	<legend>New Container</legend>
   	<input type="hidden" name="_action" value="cont_create" id="create_cont" />
-  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="1024" placeholder="New Container Name"/>
+  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="254" placeholder="New Container Name"/>
   	<input id="cont_btn" type="submit" value="Create">
       </fieldset>
     </form>
@@ -19,9 +19,13 @@
       <th class="cont_action">Action</th>
     </tr>
     % for i in containers:
-    <% 
+    <%
        name = i['name']
        unquote_name = containers_unquote[name]
+       version = None
+       if version_containers.get(name, None):
+           version = version_containers.get(name)
+           unquote_version = containers_unquote.get(version)
     %>
     <tr class="cont_list">
       <td class="cont_name">
@@ -31,19 +35,22 @@
       </td>
       <td class="cont_status">
     	<ul class="status">
-    	  <li class="default_status">Count: ${i['count']}</li>
-    	  <li class="default_status">Size: ${i['bytes']}</li>
+    	  <li class="default_status">Count: ${'{:,}'.format(int(i['count']))}</li>
+    	  <li class="default_status">Size: ${'{:,}'.format(int(i['bytes']))}</li>
 	  % if container_acl.get(name, None):
 	  % if container_acl[name].get('read', None):
-    	  <li class="default_status">Read ACL: ${container_acl[name].get('read', '')}<li>
+    	  <li class="acl">Read ACL: ${container_acl[name].get('read', '')}<li>
 	  % endif
 	  % if container_acl[name].get('write', None):
-    	  <li class="default_status">Write ACL: ${container_acl[name].get('write', '')}<li>
+    	  <li class="acl">Write ACL: ${container_acl[name].get('write', '')}<li>
 	  % endif
 	  % endif
     	  % for j in container_meta[name].keys():
-    	  <li class="default_status">${j}: ${container_meta[name][j]}</li>
+    	  <li class="metadata">${j}: ${container_meta[name][j]}</li>
     	  % endfor
+	  % if version:
+    	  <li class="version_container">Versioning to ${unquote_version}</li>
+	  % endif
     	</ul>
       </td>
       <td class="cont_action">
@@ -69,6 +76,31 @@
     	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit Metadata</a>
     	    % endif
     	  </li>
+	  <li>
+	    <form action="${base}/${name}" method="post">
+	      <input type="hidden" name="cont_name" value="${name}" id="cont_name" />
+	      % if version:
+      	      <input type="hidden" name="_action" value="cont_unset_version" id="cont_unset_version" />
+	      <input type="hidden" name="unset_version_container" value="${version}" id="unset_version_container" />
+	      <input type="submit" value="Unset"> version-storing container: ${unquote_version}
+	      % else:
+      	      <input type="hidden" name="_action" value="cont_set_version" id="cont_set_version" />
+	      <input type="submit" value="Set"> version-storing container:
+      	      <select name="version_container" size="1">
+		<%
+		   version_conts = {}
+		   for c in containers_unquote.keys():
+		       if c == name:
+                           continue
+		       version_conts.update({c: containers_unquote.get(c)})
+		%>
+		% for k in version_conts.keys():
+		<option value=${k}>${version_conts.get(k)}</option>
+		% endfor
+	      </select>
+	      % endif
+	    </form>
+	    </li>
     	</ul>
       </td>
     </tr>
@@ -154,7 +186,7 @@
     	      <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[name][m]}">
     	      % endfor
     	      % for n in range(3):
-    	      <tr><td><input type="text" name="container_meta_key${n}" size="12" maxlength="256"
+    	      <tr><td><input type="text" name="container_meta_key${n}" size="12" maxlength="128"
 			     placeholder="New container metadata name"></td>
     		<td colspan="2"><input type="text" name="container_meta_val${n}" size="24" maxlength="256"
 				       placeholder="Container metadata value"></td></tr>
@@ -174,7 +206,7 @@
       <fieldset class="create_cont">
   	<legend>New Container</legend>
   	<input type="hidden" name="_action" value="cont_create" id="create_cont" />
-  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="1024" placeholder="New Container Name"/>
+  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="254" placeholder="New Container Name"/>
   	<input id="cont_btn" type="submit" value="Create">
       </fieldset>
     </form>

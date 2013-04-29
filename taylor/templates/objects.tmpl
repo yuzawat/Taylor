@@ -1,4 +1,7 @@
 ## -*- coding: utf-8 -*-
+<%
+   from time import strftime, strptime, localtime, mktime, timezone
+%>
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
   <div class="upload_obj">
@@ -31,11 +34,17 @@
       <td class="obj_status">
 	<ul class="status">
 	  <li class="default_status">Content-Type: ${i['content_type']}</li>
-	  <li class="default_status">Size: ${i['bytes']}</li>
-	  <li class="default_status">Last-modified: ${i['last_modified']}</li>
+	  <li class="default_status">Size: ${'{:,}'.format(int(i['bytes']))}</li>
+	  <%
+	     modified = localtime(mktime(strptime(i['last_modified'].partition('.')[0] + ' GMT', '%Y-%m-%dT%H:%M:%S %Z')) - timezone)
+	  %>
+	  <li class="default_status">Last-modified: ${strftime('%Y-%m-%d %H:%M:%S', modified)}</li>
 	  % for m in object_meta[name].keys():
 	  <li class="metadata">${m}: ${object_meta[name][m]}</li>
 	  % endfor
+	  % if delete_set_time.get(name, None):
+	  <li class="delete_set_time">Going to delete on: ${strftime('%Y-%m-%d %H:%M:%S', localtime(int(delete_set_time.get(name))))}</li>
+	  % endif
 	</ul>
       </td>
       <td class="obj_action">
@@ -66,6 +75,15 @@
 	    % else:
 	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit MetaData</a>
 	    % endif
+	  </li>
+	    <form action="${base}/${name}" method="post">
+      	      <input type="hidden" name="_action" value="obj_set_delete_time" id="set_delete_obj" />
+	      <input type="hidden" name="object_name" value="${name}">
+	      <input type="submit" value="Set"> delete on 
+	      <input type="datetime-local" name="obj_delete_time">
+	      (if set blank, schedule is clear)
+	    </form>
+	  <li>
 	  </li>
 	</ul>
       </td>
@@ -105,7 +123,7 @@
 	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[name][m]}">
 	      % endfor
 	      % for n in range(3):
-	      <tr><td><input type="text" name="object_meta_key${n}" size="12" maxlength="256"
+	      <tr><td><input type="text" name="object_meta_key${n}" size="12" maxlength="128"
 			     placeholder="New object metadata name"></td>
 		<td colspan="2"><input type="text" name="object_meta_val${n}" size="24" maxlength="256"
 				       placeholder="Object metadata value"></td></tr>

@@ -19,7 +19,9 @@ setup(name='Taylor',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-         # 'mako', 'swift', 'swiftclient'
+          'mako',
+          'swift >= 1.8.0',
+          'python-swiftclient',
       ],
       entry_points= {
         'paste.filter_factory': [
