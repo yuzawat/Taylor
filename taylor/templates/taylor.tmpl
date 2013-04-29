@@ -1,6 +1,4 @@
-<%!
-   from urllib import quote, unquote
-%>
+## -*- coding: utf-8 -*-
 <!DOCTYPE html>
 <html lang=${lang}>
   <head>
@@ -28,7 +26,7 @@
 	    <li><a href="${top}/v1/${account}">${account}</a></li>
 	    % endif
 	    % if container:
-	    <li><a href="${top}/v1/${account}/${container}">${unquote(container)}</a></li>
+	    <li><a href="${top}/v1/${account}/${container}">${container_unquote}</a></li>
 	    % endif
 	    % if account:
 	    <li><a href="${top}/v1/${account}?_action=logout">Logout</a></li>

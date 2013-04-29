@@ -1,6 +1,4 @@
-<%!
-   from urllib import quote, unquote
-%>
+## -*- coding: utf-8 -*-
 <article class="containers">
   % if not any([acl_edit, delete_confirm, meta_edit]):
   <div class="create_cont">
@@ -21,63 +19,67 @@
       <th class="cont_action">Action</th>
     </tr>
     % for i in containers:
+    <% 
+       name = i['name']
+       unquote_name = containers_unquote[name]
+    %>
     <tr class="cont_list">
       <td class="cont_name">
-	<a href="${base}/${i['name']}" class="obj_name">
-	  <img src="${top}/image/folder.png" class="cont_icon" alt="${unquote(i['name'])} icon">${unquote(i['name'])}
+	<a href="${base}/${name}" class="obj_name">
+	  <img src="${top}/image/folder.png" class="cont_icon" alt="${unquote_name} icon">${unquote_name}
 	</a>
       </td>
       <td class="cont_status">
     	<ul class="status">
     	  <li class="default_status">Count: ${i['count']}</li>
     	  <li class="default_status">Size: ${i['bytes']}</li>
-	  % if container_acl.get(i['name'], None):
-	  % if container_acl[i['name']].get('read',None):
-    	  <li class="default_status">Read ACL: ${container_acl[i['name']].get('read','')}<li>
+	  % if container_acl.get(name, None):
+	  % if container_acl[name].get('read', None):
+    	  <li class="default_status">Read ACL: ${container_acl[name].get('read', '')}<li>
 	  % endif
-	  % if container_acl[i['name']].get('write', None):
-    	  <li class="default_status">Write ACL: ${container_acl[i['name']].get('write','')}<li>
+	  % if container_acl[name].get('write', None):
+    	  <li class="default_status">Write ACL: ${container_acl[name].get('write', '')}<li>
 	  % endif
 	  % endif
-    	  % for j in container_meta[i['name']].keys():
-    	  <li class="default_status">${j}: ${container_meta[i['name']][j]}</li>
+    	  % for j in container_meta[name].keys():
+    	  <li class="default_status">${j}: ${container_meta[name][j]}</li>
     	  % endfor
     	</ul>
       </td>
       <td class="cont_action">
     	<ul class="cont_action">
     	  <li>
-    	    % if i['name'] == delete_confirm:
+    	    % if name == delete_confirm:
     	    <a href="${base}" class="cont_action">Stop delete confirming</a>
     	    % else:
-    	    <a href="${base}?delete_confirm=${i['name']}" class="cont_action">Delete</a>
+    	    <a href="${base}?delete_confirm=${name}" class="cont_action">Delete</a>
     	    % endif
     	  </li>
     	  <li>
-    	    % if i['name'] == acl_edit:
+    	    % if name == acl_edit:
     	    <a href="${base}" class="cont_action">Stop editing ACL</a>
     	    % else:
-    	    <a href="${base}?acl_edit=${i['name']}" class="cont_action">Edit ACL</a>
+    	    <a href="${base}?acl_edit=${name}" class="cont_action">Edit ACL</a>
     	    % endif
     	  </li>
     	  <li>
-    	    % if i['name'] == meta_edit:
+    	    % if name == meta_edit:
     	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
     	    % else:
-    	    <a href="${base}?meta_edit=${i['name']}" class="cont_action">Edit Metadata</a>
+    	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit Metadata</a>
     	    % endif
     	  </li>
     	</ul>
       </td>
     </tr>
-    % if i['name'] == delete_confirm:
+    % if name == delete_confirm:
     <tr>
       <td colspan="3">
-    	<form action="${base}/${i['name']}" method="post">
+    	<form action="${base}/${name}" method="post">
     	  <input type="hidden" name="_action" value="cont_delete">
-    	  <input type="hidden" name="container_name" value="${i['name']}">
+    	  <input type="hidden" name="container_name" value="${name}">
     	  <fieldset class="delete_confirm">
-    	    <legend>Delete ${i['name']} Confirm</legend>
+    	    <legend>Delete ${unquote_name} Confirm</legend>
     	    <p>Are you sure?</p>
     	    <input type="submit" value="Ok">
     	    <input type="submit" value="Cancel">
@@ -86,12 +88,12 @@
       </td>
     </tr>
     % endif
-    % if i['name'] == acl_edit:
+    % if name == acl_edit:
     <tr>
       <td colspan="3">
-    	<form action="${base}/${i['name']}" method="post">
+    	<form action="${base}/${name}" method="post">
     	  <input type="hidden" name="_action" value="cont_acl">
-    	  <input type="hidden" name="container_name" value="${i['name']}">
+    	  <input type="hidden" name="container_name" value="${name}">
     	  <fieldset class="acl_edit">
     	    <legend>ACL Edit</legend>
     	    <table>
@@ -100,8 +102,8 @@
     		<td>Read</td>
     		<td>
     		  <input type="text" name="x-container-read" size="24"
-			 % if container_acl.get(i['name'], None):
-    			 value="${container_acl[i['name']].get('read', '')}"
+			 % if container_acl.get(name, None):
+    			 value="${container_acl[name].get('read', '')}"
 			 % else:
 			 value=""
 			 % endif
@@ -115,8 +117,8 @@
     		<td>Write</td>
     		<td>
     		  <input type="text" name="x-container-write" size="24"
-			 % if container_acl.get(i['name'], None): 
-    			 value="${container_acl[i['name']].get('write', '')}"
+			 % if container_acl.get(name, None): 
+    			 value="${container_acl[name].get('write', '')}"
 			 % else:
 			 value=""
 			 % endif
@@ -133,23 +135,23 @@
       </td>
     </tr>
     % endif
-    % if i['name'] == meta_edit:
+    % if name == meta_edit:
     <tr>
       <td colspan="3">
-    	<form action="${base}/${i['name']}" method="post">
+    	<form action="${base}/${name}" method="post">
     	  <input type="hidden" name="_action" value="cont_metadata">
-    	  <input type="hidden" name="container_name" value="${i['name']}">
+    	  <input type="hidden" name="container_name" value="${name}">
     	  <fieldset class="metadata_edit">
     	    <legend>Metadata Edit</legend>
     	    <table>
     	      <tr><th>Key</th><th>Value</th><th>
-    		  % if len(container_meta[i['name']]) != 0:
+    		  % if len(container_meta[name]) != 0:
     		  Remove
     		  % endif
     	      </th></tr>
-    	      % for m in container_meta[i['name']].keys():
-    	      <tr><td>${m}</td><td>${container_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
-    	      <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[i['name']][m]}">
+    	      % for m in container_meta[name].keys():
+    	      <tr><td>${m}</td><td>${container_meta[name][m]}</td><td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
+    	      <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[name][m]}">
     	      % endfor
     	      % for n in range(3):
     	      <tr><td><input type="text" name="container_meta_key${n}" size="12" maxlength="256"

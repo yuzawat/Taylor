@@ -1,6 +1,4 @@
-<%!
-   from urllib import quote, unquote
-%>
+## -*- coding: utf-8 -*-
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
   <div class="upload_obj">
@@ -21,62 +19,66 @@
       <th class="obj_action">Action</th>
     </tr>
     % for i in objects:
+    <% 
+       name = i['name']
+       unquote_name = objects_unquote[name]
+    %>
     <tr class="obj_list">
       <td class="obj_name">
-	<a href="${base}/${i['name']}" class="obj_name">
-      	  <img src="${top}/image/file.png" class="obj_icon" alt="${unquote(i['name'])} icon">${unquote(i['name'])}
+	<a href="${base}/${name}" class="obj_name">
+      	  <img src="${top}/image/file.png" class="obj_icon" alt="${unquote_name} icon">${unquote_name}
       </a></td>
       <td class="obj_status">
 	<ul class="status">
 	  <li class="default_status">Content-Type: ${i['content_type']}</li>
 	  <li class="default_status">Size: ${i['bytes']}</li>
 	  <li class="default_status">Last-modified: ${i['last_modified']}</li>
-	  % for j in object_meta[i['name']].keys():
-	  <li class="metadata">${j}: ${object_meta[i['name']][j]}</li>
+	  % for m in object_meta[name].keys():
+	  <li class="metadata">${m}: ${object_meta[name][m]}</li>
 	  % endfor
 	</ul>
       </td>
       <td class="obj_action">
 	<ul class="obj_action">
 	  <li>
-	    % if i['name'] == delete_confirm:
+	    % if name == delete_confirm:
 	    <a href="${base}" class="cont_action">Stop delete confirming</a>
 	    % else:
-	    <a href="${base}?delete_confirm=${i['name']}" class="cont_action">Delete</a>
+	    <a href="${base}?delete_confirm=${name}" class="cont_action">Delete</a>
 	    % endif
 	  </li>
 	  <li>
-	    <form action="${base}/${i['name']}" method="post">
+	    <form action="${base}/${name}" method="post">
       	      <input type="hidden" name="_action" value="obj_copy" id="copy_obj" />
-	      <input type="hidden" name="from_object" value="${i['name']}" id="from_obj" />
+	      <input type="hidden" name="from_object" value="${name}" id="from_obj" />
 	      <input type="submit" value="Copy"> to
       	      <select name="to_container" size="1">
-		% for k in cont_names:
-		<option value=${k}>${unquote(k)}</option>
+		% for c, u in zip(container_names, container_unquote_names):
+		<option value=${c}>${u}</option>
 		% endfor
 	      </select>
  	      <input type="text" name="to_object" size="20" maxlength="256" placeholder="New objname if change">
 	    </form>
 	  </li>
 	  <li>
- 	    % if i['name'] == meta_edit:
+ 	    % if name == meta_edit:
 	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
 	    % else:
-	    <a href="${base}?meta_edit=${i['name']}" class="cont_action">Edit MetaData</a>
+	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit MetaData</a>
 	    % endif
 	  </li>
 	</ul>
       </td>
     </tr>
     <tr>
-    % if i['name'] == delete_confirm:
+    % if name == delete_confirm:
       <td colspan="3">
 	  <fieldset class="delete_confirm">
-	    <legend>Delete ${i['name']} Confirm</legend>
+	    <legend>Delete ${unquote_name} Confirm</legend>
 	    <p>Are you sure?</p>
-	    <form action="${base}/${i['name']}" method="post">
+	    <form action="${base}/${name}" method="post">
 	      <input type="hidden" name="_action" value="obj_delete">
-	      <input type="hidden" name="object_name" value="${i['name']}">
+	      <input type="hidden" name="object_name" value="${name}">
 	      <input type="submit" value="Ok">
 	    </form>
 	    <input type="submit" value="Cancel">
@@ -84,23 +86,23 @@
       </td>
     </tr>
     % endif
-    % if i['name'] == meta_edit:
+    % if name == meta_edit:
     <tr>
       <td colspan="3">
-	<form action="${base}/${i['name']}" method="post">
+	<form action="${base}/${name}" method="post">
 	  <input type="hidden" name="_action" value="obj_metadata">
-	  <input type="hidden" name="object_name" value="${i['name']}">
+	  <input type="hidden" name="object_name" value="${name}">
 	  <fieldset class="meta_edit">
 	    <legend>Metadata Edit</legend>
 	    <table>
 	      <tr><th>Key</th><th>Value</th><th>
-		  % if len(object_meta[i['name']]) != 0:
+		  % if len(object_meta[name]) != 0:
 		  Remove
 		  % endif
 	      </th></tr>
-	      % for m in object_meta[i['name']].keys():
-	      <tr><td>${m}</td><td>${object_meta[i['name']][m]}</td><td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
-	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[i['name']][m]}">
+	      % for m in object_meta[name].keys():
+	      <tr><td>${m}</td><td>${object_meta[name][m]}</td><td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
+	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[name][m]}">
 	      % endfor
 	      % for n in range(3):
 	      <tr><td><input type="text" name="object_meta_key${n}" size="12" maxlength="256"

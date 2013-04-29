@@ -114,8 +114,13 @@ def copy_object(url, token, from_cont, from_obj, to_cont, to_obj=None,
     to_obj_name = to_obj if to_obj else from_obj
     return put_object(url, token, to_cont, name=to_obj_name, contents=None,
                       content_length=0,
+                      # if URL encorded strings was set in X-Copy-From, we have to 
+                      # execute URL encording twice.
+                      # '%E6%97%A5%E6%9C%AC%E8%AA%9E'
+                      #     -> %25E6%2597%25A5%25E6%259C%25AC%25E8%25AA%259E
+                      # See: line 810 in swift-1.8.0/swift/proxy/controllers/obj.py
                       headers={'X-Copy-From': '/%s/%s' %
-                               (from_cont, from_obj)},
+                               (quote(from_cont), quote(from_obj))},
                       http_conn=http_conn, proxy=proxy)
 
 
@@ -316,12 +321,13 @@ class Taylor(object):
         base = self.add_prefix(urlparse(storage_url).path)
         status = self.token_bank.get(token, None)
         msg = ''
-        delete_confirm = req.params_alt().get('delete_confirm', '')
-        acl_edit = req.params_alt().get('acl_edit', '')
-        meta_edit = req.params_alt().get('meta_edit', '')
+        delete_confirm = quote(req.params_alt().get('delete_confirm', ''))
+        acl_edit = quote(req.params_alt().get('acl_edit', ''))
+        meta_edit = quote(req.params_alt().get('meta_edit', ''))
 
         if status:
             msg = status.get('msg', '')
+
         if path_type == 2:  # account
             try:
                 (acct_status, cont_list) = get_account(storage_url, token)
@@ -329,6 +335,7 @@ class Taylor(object):
                 pass
             cont_meta = {}
             cont_acl = {}
+            cont_unquote_name = {}
             edit_param = [acl_edit, delete_confirm, meta_edit]
             if any(edit_param):
                 edit_cont = filter(None, edit_param)[0]
@@ -345,6 +352,7 @@ class Taylor(object):
                      for m in meta.keys()
                      if m.startswith('x-container-read')
                      or m.startswith('x-container-write')])
+                cont_unquote_name[i['name']] = unquote(i['name'])
             resp = Response(charset='utf8')
             resp.set_cookie('_token', token, path=self.page_path,
                             max_age=self.cookie_max_age)
@@ -358,6 +366,7 @@ class Taylor(object):
                                        'containers': cont_list,
                                        'container_meta': cont_meta,
                                        'container_acl': cont_acl,
+                                       'containers_unquote': cont_unquote_name ,
                                        'delete_confirm': delete_confirm,
                                        'acl_edit': acl_edit,
                                        'meta_edit': meta_edit})
@@ -366,13 +375,14 @@ class Taylor(object):
         if path_type == 3:  # container
             try:
                 (acct_status, cont_list) = get_account(storage_url, token)
-                (cont_status, obj_list) = get_container(storage_url, token,
-                                                        cont)
+                (cont_status, obj_list) = get_container(storage_url, token, cont)
             except ClientException, err:
                 pass
             obj_meta = {}
+            obj_unquote_name = {}
             cont_names = [i['name'] for i in cont_list]
-            edit_param = [acl_edit, delete_confirm, meta_edit]
+            cont_unquote_names = [unquote(i['name']) for i in cont_list]
+            edit_param = [delete_confirm, meta_edit]
             if any(edit_param):
                 edit_obj = filter(None, edit_param)[0]
                 obj_list = [obj for obj in obj_list if obj['name'] == edit_obj]
@@ -381,6 +391,7 @@ class Taylor(object):
                 obj_meta[i['name']] = dict(
                     [(m[len('x-object-meta-'):].capitalize(), meta[m])
                      for m in meta.keys() if m.startswith('x-object-meta')])
+                obj_unquote_name[i['name']] = unquote(i['name'])
             resp = Response(charset='utf8')
             resp.set_cookie('_token', token, path=self.page_path,
                             max_age=self.cookie_max_age)
@@ -391,11 +402,14 @@ class Taylor(object):
                                        'top': self.page_path,
                                        'account': acc,
                                        'container': cont,
+                                       'container_unquote': unquote(cont),
                                        'message': msg,
                                        'base': base,
                                        'objects': obj_list,
                                        'object_meta': obj_meta,
-                                       'cont_names': cont_names,
+                                       'objects_unquote': obj_unquote_name, 
+                                       'container_names': cont_names,
+                                       'container_unquote_names': cont_unquote_names,
                                        'delete_confirm': delete_confirm,
                                        'acl_edit': acl_edit,
                                        'meta_edit': meta_edit})
@@ -507,10 +521,10 @@ class Taylor(object):
             cont = quote(from_cont)
         from_obj = params.get('from_object', None)
         if from_obj:
-            obj = quote(from_obj)
+            obj = from_obj
         to_cont = params.get('to_container', None)
         if to_cont:
-            to_cont = quote(to_cont)
+            to_cont = to_cont
         to_obj = params.get('to_object', None)
         if to_obj:
             to_obj = quote(to_obj)
