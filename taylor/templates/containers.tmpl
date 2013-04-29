@@ -1,4 +1,7 @@
 ## -*- coding: utf-8 -*-
+<%
+   from urllib import unquote
+%>
 <article class="containers">
   % if not any([acl_edit, delete_confirm, meta_edit]):
   <div class="create_cont">
@@ -46,7 +49,7 @@
 	  % endif
 	  % endif
     	  % for j in container_meta[name].keys():
-    	  <li class="metadata">${j}: ${container_meta[name][j]}</li>
+    	  <li class="metadata">${unquote(j)}: ${unquote(container_meta[name][j])}</li>
     	  % endfor
 	  % if version:
     	  <li class="version_container">Versioning to ${unquote_version}</li>
@@ -182,7 +185,8 @@
     		  % endif
     	      </th></tr>
     	      % for m in container_meta[name].keys():
-    	      <tr><td>${m}</td><td>${container_meta[name][m]}</td><td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
+    	      <tr><td>${unquote(m)}</td><td>${unquote(container_meta[name][m])}</td>
+		<td><input type="checkbox" name="remove-x-container-meta-${m.lower()}"></td></tr>
     	      <input type="hidden" name="x-container-meta-${m.lower()}" value="${container_meta[name][m]}">
     	      % endfor
     	      % for n in range(3):

@@ -499,16 +499,22 @@ class Taylor(object):
         # I don't understand why use different way for the same purpose.
         for i in range(10):
             if 'container_meta_key%s' % i in form:
-                keyname = 'x-container-meta-' + \
-                form['container_meta_key%s' % i].lower()
-                headers.update({keyname:
-                                form['container_meta_val%s' % i]})
+                keyname = form['container_meta_key%s' % i].lower()
+                if len(keyname) > 128:
+                    raise ValueError
+                val = form['container_meta_val%s' % i]
+                if len(val) > 256:
+                    raise ValueError
+                headers.update({'x-container-meta-' + keyname: val})
                 continue
             if 'object_meta_key%s' % i in form:
-                keyname = 'x-object-meta-' + \
-                form['object_meta_key%s' % i].lower()
-                headers.update({keyname:
-                                form['object_meta_val%s' % i]})
+                keyname = form['object_meta_key%s' % i].lower()
+                if len(keyname) > 128:
+                    raise ValueError
+                val = form['object_meta_val%s' % i]
+                if len(val) > 256:
+                    raise ValueError
+                headers.update({'x-object-meta-' + keyname: val})
         return headers
 
     def acl_check(self, form):
@@ -574,7 +580,10 @@ class Taylor(object):
         to_obj = params.get('to_object', None)
         if to_obj:
             to_obj = quote(to_obj)
-        meta_headers = self.metadata_check(params)
+        try:
+            meta_headers = self.metadata_check(params)
+        except ValueError, err:
+            return HTTP_PRECONDITION_FAILED
         acl_headers = self.acl_check(params)
         obj_delete_set = params.get('obj_delete_time', None)
         version_cont = params.get('version_container', None)

@@ -1,6 +1,7 @@
 ## -*- coding: utf-8 -*-
 <%
    from time import strftime, strptime, localtime, mktime, timezone
+   from urllib import unquote
 %>
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
@@ -40,7 +41,7 @@
 	  %>
 	  <li class="default_status">Last-modified: ${strftime('%Y-%m-%d %H:%M:%S', modified)}</li>
 	  % for m in object_meta[name].keys():
-	  <li class="metadata">${m}: ${object_meta[name][m]}</li>
+	  <li class="metadata">${unquote(m)}: ${unquote(object_meta[name][m])}</li>
 	  % endfor
 	  % if delete_set_time.get(name, None):
 	  <li class="delete_set_time">Going to delete on: ${strftime('%Y-%m-%d %H:%M:%S', localtime(int(delete_set_time.get(name))))}</li>
@@ -119,7 +120,8 @@
 		  % endif
 	      </th></tr>
 	      % for m in object_meta[name].keys():
-	      <tr><td>${m}</td><td>${object_meta[name][m]}</td><td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
+	      <tr><td>${unquote(m)}</td><td>${unquote(object_meta[name][m])}</td>
+		<td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
 	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[name][m]}">
 	      % endfor
 	      % for n in range(3):
