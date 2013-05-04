@@ -209,3 +209,7 @@ td.obj_action{
 p.message{
     text
 }
+
+div.paging{
+    text-align: center;
+}

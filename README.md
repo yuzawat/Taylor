@@ -38,6 +38,10 @@ pipeline = catch_errors proxy-logging healthcheck cache taylor tempauth proxy-lo
 use = egg:Taylor#taylor
 page_path = /taylor
 auth_url = http://localhost:8080/auth/v1.0
+items_per_page = 5
+cookie_max_age = 3600
+enable_versions = no
+enable_object_expire = no
 ```
 
 ### setting items
@@ -45,6 +49,15 @@ auth_url = http://localhost:8080/auth/v1.0
   * setting of base path of this application.
 * auth_url
   * auth URL of OpenStack Storage.
+* items_per_page
+  * showing item count per a page. default: 5
+* cookie_max_age
+  * max age time of cookie. default: 3600(sec.)
+* enable_versions
+  * enable setting a version-storing container. default: no
+* enable_object_expire
+  * enable setting a schedule for expiring objects. default: no
+
 
 ## How I Learned to Stop Worrying
 I don't care Internet Explorer.
@@ -58,7 +71,7 @@ checking by Google Chrome ver 26.0.
 * python-swiftclient
 
 ## Version
-0.1(2013-04-29)
+0.1(2013-05-04)
 
 ## URL
 https://github.com/yuzawat/Taylor

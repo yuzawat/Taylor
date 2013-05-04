@@ -23,16 +23,24 @@
 	<nav id="navi">
 	  <ul id="navigate">
 	    % if account:
-	    <li><a href="${top}/v1/${account}">${account}</a></li>
+	    <li><a href="${top}/v1/${account}?limit=${limit}">${account}</a></li>
 	    % endif
 	    % if container:
-	    <li><a href="${top}/v1/${account}/${container}">${container_unquote}</a></li>
+	    <li><a href="${top}/v1/${account}/${container}?limit=${limit}">${container_unquote}</a></li>
 	    % endif
 	    % if account:
 	    <li><a href="${top}/v1/${account}?_action=logout">Logout</a></li>
 	    % endif
 	  </ul>
 	</nav>
+      </div>
+      <div class="paging">
+	% if ptype != 'login':
+	<a href=${base}?limit=${limit}> << </a>
+	<a href=${base}?limit=${limit}&marker=${prev_p}><</a>
+	<a href=${base}?limit=${limit}&marker=${next_p}>></a>
+	<a href=${base}?limit=${limit}&marker=${last_p}> >> </a>
+	% endif
       </div>
       <section class="main">
 	% if ptype=='login':
@@ -45,6 +53,15 @@
 	<%include file="objects.tmpl"/>
 	% endif
       </section>
-      <footer id="foot"></footer>
+      <div class="paging">
+	% if ptype != 'login':
+	<a href=${base}?limit=${limit}> << </a>
+	<a href=${base}?limit=${limit}&marker=${prev_p}><</a>
+	<a href=${base}?limit=${limit}&marker=${next_p}>></a>
+	<a href=${base}?limit=${limit}&marker=${last_p}> >> </a>
+	% endif
+      </div>
+      <footer id="foot">
+      </footer>
     </body>
 </html>

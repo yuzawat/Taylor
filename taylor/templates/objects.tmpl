@@ -44,11 +44,12 @@
 	  <li class="metadata">${unquote(m)}: ${unquote(object_meta[name][m])}</li>
 	  % endfor
 	  % if delete_set_time.get(name, None):
-	  <li class="delete_set_time">Going to delete on: ${strftime('%Y-%m-%d %H:%M:%S', localtime(int(delete_set_time.get(name))))}</li>
+	  <li class="delete_set_time">Expire on: ${strftime('%Y-%m-%d %H:%M:%S', localtime(int(delete_set_time.get(name))))}</li>
 	  % endif
 	</ul>
       </td>
       <td class="obj_action">
+	<div class="normal">
 	<ul class="obj_action">
 	  <li>
 	    % if name == delete_confirm:
@@ -63,7 +64,7 @@
 	      <input type="hidden" name="from_object" value="${name}" id="from_obj" />
 	      <input type="submit" value="Copy"> to
       	      <select name="to_container" size="1">
-		% for c, u in zip(container_names, container_unquote_names):
+		% for c, u in whole_containers:
 		<option value=${c}>${u}</option>
 		% endfor
 	      </select>
@@ -77,16 +78,20 @@
 	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit MetaData</a>
 	    % endif
 	  </li>
+	  % if enable_object_expire:
+	  <li>
 	    <form action="${base}/${name}" method="post">
       	      <input type="hidden" name="_action" value="obj_set_delete_time" id="set_delete_obj" />
 	      <input type="hidden" name="object_name" value="${name}">
-	      <input type="submit" value="Set"> delete on 
+	      <input type="submit" value="Expire"> on 
 	      <input type="datetime-local" name="obj_delete_time">
-	      (if set blank, schedule is clear)
 	    </form>
-	  <li>
 	  </li>
+	  % endif
 	</ul>
+	</div>
+	<div class="friendly">
+	</div>
       </td>
     </tr>
     <tr>
