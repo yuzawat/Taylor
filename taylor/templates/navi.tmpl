@@ -1,0 +1,15 @@
+	<div class="navigate">
+	  <nav id="navi">
+	    <ul id="navigate">
+	      % if account:
+	      <li><a href="${top}/v1/${account}?limit=${limit}">${account}</a></li>
+	      % endif
+	      % if container:
+	      <li><a href="${top}/v1/${account}/${container}?limit=${limit}">${container_unquote}</a></li>
+	      % endif
+	      % if account:
+	      <li><a href="${top}/v1/${account}?_action=logout">Logout</a></li>
+	      % endif
+	    </ul>
+	  </nav>
+	</div>

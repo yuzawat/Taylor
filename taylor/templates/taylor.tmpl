@@ -7,11 +7,13 @@
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <meta http-equiv="Content-Style-Type" content="text/css" />
     <meta http-equiv="Content-Script-Type" content="text/javascript" />
+    <meta name="viewport" content="width=device-width" />
     <link rel="shortcut icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
     <link rel="icon" href="/favicon.ico" type="image/vnd.microsoft.icon" />
     <link rel="stylesheet" href="${top}/css/default.css" type="text/css" />
-    <script src="http://code.jquery.com/jquery-latest.min.js"></script>
-    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <script type="text/javascript" src="https://raw.github.com/defunkt/jquery-pjax/master/jquery.pjax.js"></script>
+    <script type="text/javascript" src="http://malsup.github.io/jquery.blockUI.js"></script>
     <script type="text/javascript" src="/taylor/js/default.js"></script>
     <title>${title}</title>
     <body>
@@ -19,47 +21,20 @@
 	<h1 class="title">${title}: OpenStack Object Storage Manipulator</h1>
 	<p id="message">${message}</p>
       </header>
-      <div class="navigate">
-	<nav id="navi">
-	  <ul id="navigate">
-	    % if account:
-	    <li><a href="${top}/v1/${account}?limit=${limit}">${account}</a></li>
-	    % endif
-	    % if container:
-	    <li><a href="${top}/v1/${account}/${container}?limit=${limit}">${container_unquote}</a></li>
-	    % endif
-	    % if account:
-	    <li><a href="${top}/v1/${account}?_action=logout">Logout</a></li>
-	    % endif
-	  </ul>
-	</nav>
-      </div>
-      <div class="paging">
-	% if ptype != 'login':
-	<a href=${base}?limit=${limit}> << </a>
-	<a href=${base}?limit=${limit}&marker=${prev_p}><</a>
-	<a href=${base}?limit=${limit}&marker=${next_p}>></a>
-	<a href=${base}?limit=${limit}&marker=${last_p}> >> </a>
-	% endif
-      </div>
-      <section class="main">
-	% if ptype=='login':
-	<%include file="login.tmpl"/>
-	% endif
-	% if ptype=='containers':
-	<%include file="containers.tmpl"/>
-	% endif
-	% if ptype=='objects':
-	<%include file="objects.tmpl"/>
-	% endif
-      </section>
-      <div class="paging">
-	% if ptype != 'login':
-	<a href=${base}?limit=${limit}> << </a>
-	<a href=${base}?limit=${limit}&marker=${prev_p}><</a>
-	<a href=${base}?limit=${limit}&marker=${next_p}>></a>
-	<a href=${base}?limit=${limit}&marker=${last_p}> >> </a>
-	% endif
+      <div id="pjax_container">
+	<section class="main">
+	  % if ptype=='login':
+	  <%include file="login.tmpl"/>
+	  % endif
+	  % if ptype=='containers':
+	  <%include file="navi.tmpl"/>
+	  <%include file="containers.tmpl"/>
+	  % endif
+	  % if ptype=='objects':
+	  <%include file="navi.tmpl"/>
+	  <%include file="objects.tmpl"/>
+	  % endif
+	</section>
       </div>
       <footer id="foot">
       </footer>

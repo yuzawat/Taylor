@@ -194,6 +194,9 @@ class Taylor(object):
             last = val.get('last', 0)
             if (time() - last) >= self.cookie_max_age:
                 del(self.token_bank[tok])
+        
+        if 'X-PJAX' in req.headers:
+            print 'X-PJAX'
 
         # after action
         if '_action' in req.params_alt():
@@ -400,8 +403,10 @@ class Taylor(object):
             edit_param = [acl_edit, delete_confirm, meta_edit]
             if any(edit_param):
                 edit_cont = filter(None, edit_param)[0]
-                cont_list = [cont for cont in cont_list
-                             if cont['name'] == edit_cont]
+                meta =  head_container(storage_url, token, edit_cont)
+                cont_list = [{'name': edit_cont,
+                              'count': meta.get('x-container-object-count'), 
+                              'bytes': meta.get('x-container-bytes-used')}]
             for i in cont_list:
                 try:
                     meta = head_container(storage_url, token, i['name'])
@@ -434,15 +439,18 @@ class Taylor(object):
                                        'account': acc,
                                        'message': msg,
                                        'base': base,
+
+                                       'whole_containers': whole_cont_list,
+
                                        'containers': cont_list,
                                        'container_meta': cont_meta,
                                        'container_acl': cont_acl,
                                        'containers_unquote': cont_unquote_name,
-                                       'whole_containers': whole_cont_list,
                                        'delete_confirm': delete_confirm,
                                        'acl_edit': acl_edit,
                                        'meta_edit': meta_edit,
                                        'enable_versions': self.enable_versions,
+
                                        'limit': limit,
                                        'prev_p': prev_marker,
                                        'next_p': next_marker,
@@ -467,7 +475,7 @@ class Taylor(object):
             edit_param = [delete_confirm, meta_edit]
             if any(edit_param):
                 edit_obj = filter(None, edit_param)[0]
-                obj_list = [obj for obj in obj_list if obj['name'] == edit_obj]
+                obj_list = [obj for obj in _whole_obj_list if obj['name'] == edit_obj]
             for i in obj_list:
                 try:
                     meta = head_object(storage_url, token, cont, i['name'])
@@ -495,15 +503,18 @@ class Taylor(object):
                                        'container_unquote': unquote(cont),
                                        'message': msg,
                                        'base': base,
+
+                                       'whole_containers': whole_cont_list,
                                        'objects': obj_list,
                                        'object_meta': obj_meta,
                                        'objects_unquote': obj_unquote_name, 
-                                       'whole_containers': whole_cont_list,
+
                                        'delete_confirm': delete_confirm,
                                        'acl_edit': acl_edit,
                                        'meta_edit': meta_edit,
                                        'delete_set_time': obj_delete_set_time,
                                        'enable_object_expire': self.enable_object_expire,
+
                                        'limit': limit,
                                        'prev_p': prev_marker,
                                        'next_p': next_marker,

@@ -1,5 +1,12 @@
-$(document).ready(function() {
-    if($("#id_username").length){
-	$("input#id_username").focus();    
-    }
-});
+$(function() {
+      $('#id_username').focus().end();
+
+      // show message 
+      var message = $('#message').text();
+      $('#message').text('');
+      if (message) {
+	  $.growlUI(message);	  
+	  console.log(message);      
+      }
+
+  });

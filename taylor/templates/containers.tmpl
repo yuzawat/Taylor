@@ -4,16 +4,8 @@
 %>
 <article class="containers">
   % if not any([acl_edit, delete_confirm, meta_edit]):
-  <div class="create_cont">
-    <form action="${base}" method="post">
-      <fieldset class="create_cont">
-  	<legend>New Container</legend>
-  	<input type="hidden" name="_action" value="cont_create" id="create_cont" />
-  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="254" placeholder="New Container Name"/>
-  	<input id="cont_btn" type="submit" value="Create">
-      </fieldset>
-    </form>
-  </div>
+  <%include file="paging.tmpl"/>
+  <%include file="create_container.tmpl"/>
   % endif
   <table class="containers">
     <tr class="cont_list">
@@ -66,14 +58,14 @@
     	    % if name == acl_edit:
     	    <a href="${base}" class="cont_action">Stop editing ACL</a>
     	    % else:
-    	    <a href="${base}?acl_edit=${name}" class="cont_action">Edit ACL</a>
+    	    <a href="${base}?acl_edit=${name}" class="cont_action">ACL</a>
     	    % endif
     	  </li>
     	  <li>
     	    % if name == meta_edit:
     	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
     	    % else:
-    	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit Metadata</a>
+    	    <a href="${base}?meta_edit=${name}" class="cont_action">Metadata</a>
     	    % endif
     	  </li>
 	  % if enable_versions:
@@ -86,7 +78,7 @@
 	      <input type="submit" value="Unset"> versions: ${unquote_version}
 	      % else:
       	      <input type="hidden" name="_action" value="cont_set_version" id="cont_set_version" />
-	      <input type="submit" value="Set"> versions:
+	      <input type="submit" value="Version">
       	      <select name="version_container" size="1">
               <%
 	          version_containers = []
@@ -206,15 +198,7 @@
     % endfor
   </table>
   % if len(containers)!=0 and not any([acl_edit, delete_confirm, meta_edit]):
-  <div class="create_cont">
-    <form action="${base}" method="post">
-      <fieldset class="create_cont">
-  	<legend>New Container</legend>
-  	<input type="hidden" name="_action" value="cont_create" id="create_cont" />
-  	<input id="cont_name" type="input" name="cont_name" size="24" maxlength="254" placeholder="New Container Name"/>
-  	<input id="cont_btn" type="submit" value="Create">
-      </fieldset>
-    </form>
-  </div>
+  <%include file="create_container.tmpl"/>
+  <%include file="paging.tmpl"/>
   % endif
 </article>

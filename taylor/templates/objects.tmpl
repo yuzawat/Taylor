@@ -5,17 +5,10 @@
 %>
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
-  <div class="upload_obj">
-    <form action="${base}" method="post" enctype="multipart/form-data">
-      <fieldset class="upload_obj">
-	<legend>Upload Object</legend>
-	<input type="hidden" name="_action" value="obj_create" id="create_obj" />
-	<input id="id_username" type="file" name="obj_name" size="24" />
-	<input id="upload_btn" type="submit" value="upload">
-      </fieldset>
-    </form>
-  </div>
+  <%include file="paging.tmpl"/>
+  <%include file="upload_object.tmpl"/>
   % endif
+  <div id="upload_target" draggable="true">
   <table class="objects">
     <tr class="obj_list">
       <th class="obj_name">Name</th>
@@ -75,7 +68,7 @@
  	    % if name == meta_edit:
 	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
 	    % else:
-	    <a href="${base}?meta_edit=${name}" class="cont_action">Edit MetaData</a>
+	    <a href="${base}?meta_edit=${name}" class="cont_action">MetaData</a>
 	    % endif
 	  </li>
 	  % if enable_object_expire:
@@ -144,16 +137,9 @@
     % endif
     % endfor
   </table>
-  % if len(objects)!=0 and not any([delete_confirm, meta_edit]):
-  <div class="upload_obj">
-    <form action="${base}" method="post" enctype="multipart/form-data">
-      <fieldset class="upload_obj">
-	<legend>Upload Object</legend>
-	<input type="hidden" name="_action" value="obj_create" id="create_obj" />
-	<input id="id_username" type="file" name="obj_name" size="24" />
-	<input id="upload_btn" type="submit" value="upload">
-      </fieldset>
-    </form>
   </div>
+  % if len(objects)!=0 and not any([delete_confirm, meta_edit]):
+  <%include file="upload_object.tmpl"/>
+  <%include file="paging.tmpl"/>
   % endif
 </article>
