@@ -13,7 +13,7 @@ from swift.common.http import *
 from swift.common.middleware.acl import referrer_allowed
 from swift.common.swob import Request, Response, wsgify, \
     HTTPNotFound, HTTPFound
-from swift.common.utils import split_path, config_true_value
+from swift.common.utils import split_path, config_true_value, get_logger, cache_from_env
 from time import time, mktime, strptime
 from types import MethodType
 from urlparse import urlsplit, urlunsplit, parse_qsl, urlparse
@@ -137,6 +137,8 @@ class Taylor(object):
         """
         self.app = app
         self.conf = conf
+        self.title = conf.get('taylor_title', 'Taylor')
+        self.logger = get_logger(conf, log_route='%s' % self.title)
         self.page_path = conf.get('page_path', '/taylor')
         self.auth_url = conf.get('auth_url')
         self.items_per_page = int(conf.get('items_per_page', 5))
@@ -144,12 +146,14 @@ class Taylor(object):
         self.enable_versions = config_true_value(conf.get('enable_versions', 'yes'))
         self.enable_object_expire = config_true_value(conf.get('enable_object_expire', 'yes'))
         self.path = abspath(dirname(__file__))
-        self.title = conf.get('taylor_title', 'Taylor')
         self.tmpl = TaylorTemplate()
         self.token_bank = {}
+        self.memcache = None
+        self.logger.info('%s loaded.' % self.title)
 
     @wsgify
     def __call__(self, req):
+        self.memcache = cache_from_env(req.environ)
         login_path = '%s/%s' % (self.page_path, 'login')
         token = None
         storage_url = None
@@ -184,7 +188,7 @@ class Taylor(object):
 
         # login page
         if req.path == login_path:
-            return self.login(req)
+            return self.page_login(req)
         if not token or not storage_url:
             return HTTPFound(location=login_path)
         self.token_bank[token].update({'last': time()})
@@ -206,7 +210,7 @@ class Taylor(object):
             return self.page_after_action(req, storage_url, token)
 
         # construct main pages
-        return self.page(req, storage_url, token)
+        return self.page_main(req, storage_url, token)
 
     def pass_file(self, req, path, content_type=None):
         """ pass a file to client """
@@ -224,7 +228,7 @@ class Taylor(object):
         except IOError:
             return HTTPNotFound(request=req)
     
-    def login(self, req):
+    def page_login(self, req):
         """ create login page """
         if req.method == 'POST':
             try:
@@ -331,196 +335,17 @@ class Taylor(object):
                         max_age=self.cookie_max_age)
         return resp
 
-    def page(self, req, storage_url, token):
+    def page_main(self, req, storage_url, token):
         """ main page container list or object list """
         path = urlparse(self.del_prefix(req.url)).path
         if len(path.split('/')) <= 2:
             path = urlparse(storage_url).path
         vrs, acc, cont, obj = split_path(path, 1, 4, True)
-        lang = self.get_lang(req)
         path_type = len([i for i in [vrs, acc, cont, obj] if i])
-        base = self.add_prefix(urlparse(storage_url).path)
-        status = self.token_bank.get(token, None)
-        msg = ''
-        params = req.params_alt()
-        limit = params.get('limit', self.items_per_page)
-        marker = params.get('marker', '')
-        end_marker = params.get('end_marker', '')
-        delete_confirm = quote(params.get('delete_confirm', ''))
-        acl_edit = quote(params.get('acl_edit', ''))
-        meta_edit = quote(params.get('meta_edit', ''))
-
-        def paging_items(marker, whole_list, items_per_page):
-            # one page
-            if len(whole_list) <= items_per_page:
-                return ('', '', '')
-            whole_len = len(whole_list)
-            marker_index = range(items_per_page - 1, whole_len, items_per_page)
-            whole_cont_names = [c for c, uc in whole_list]
-            markers_list = [whole_cont_names[idx] for idx in marker_index]
-            if not marker:
-                # the first page
-                prev_marker = ''
-                next_marker = whole_cont_names[marker_index[0]]
-            else:
-                # ['TEST00', 'TEST04', 'TEST08', 'TEST12']
-                if marker in markers_list:
-                    m_idx = markers_list.index(marker)
-                else:
-                    near_markers = filter(lambda x: x > marker, markers_list)
-                    if len(near_markers) != 0:
-                        m_idx = markers_list.index(near_markers[0])
-                    else:
-                        m_idx = len(markers_list) - 1
-                prev_marker = '' if m_idx <= 0 else markers_list[m_idx - 1]
-                next_marker = markers_list[m_idx + 1 if (len(markers_list) - 1) > m_idx else -1]
-            last_marker = markers_list[-1]
-            return (prev_marker, next_marker, last_marker)
-
-        if status:
-            msg = status.get('msg', '')
-
-        # whole container list
-        try:
-            (_junk, _whole_cont_list) = get_account(storage_url, token,
-                                                    full_listing=True)
-        except ClientException, err:
-            pass
-        whole_cont_list = zip([_c['name'] for _c in _whole_cont_list],
-                              [unquote(_c['name']) for _c in _whole_cont_list])
-
         if path_type == 2:  # account
-            try:
-                (acct_status, cont_list) = get_account(storage_url, token,
-                                                       limit=self.items_per_page,
-                                                       marker=marker)
-            except ClientException, err:
-                pass
-            cont_meta = {}
-            cont_acl = {}
-            cont_unquote_name = {}
-            cont_version_cont = {}
-            edit_param = [acl_edit, delete_confirm, meta_edit]
-            if any(edit_param):
-                edit_cont = filter(None, edit_param)[0]
-                meta =  head_container(storage_url, token, edit_cont)
-                cont_list = [{'name': edit_cont,
-                              'count': meta.get('x-container-object-count'), 
-                              'bytes': meta.get('x-container-bytes-used')}]
-            for i in cont_list:
-                try:
-                    meta = head_container(storage_url, token, i['name'])
-                except ClientException, err:
-                    resp = Response(charset='utf8')
-                    resp.status = e.http_status
-                    return resp
-                cont_meta[i['name']] = dict(
-                    [(m[len('x-container-meta-'):].capitalize(), meta[m])
-                     for m in meta.keys()
-                     if m.startswith('x-container-meta')])
-                cont_acl[i['name']] = dict(
-                    [(m[len('x-container-'):], meta[m])
-                     for m in meta.keys()
-                     if m.startswith('x-container-read')
-                     or m.startswith('x-container-write')])
-                cont_unquote_name[i['name']] = unquote(i['name'])
-                if 'x-versions-location' in meta:
-                    cont_version_cont[i['name']] = unquote(meta.get('x-versions-location'))
-
-            (prev_marker, next_marker, last_marker) = paging_items(marker, whole_cont_list, self.items_per_page)
-
-            resp = Response(charset='utf8')
-            resp.set_cookie('_token', token, path=self.page_path,
-                            max_age=self.cookie_max_age)
-            resp.app_iter = self.tmpl({'ptype': 'containers',
-                                       'title': self.title,
-                                       'lang': lang,
-                                       'top': self.page_path,
-                                       'account': acc,
-                                       'message': msg,
-                                       'base': base,
-
-                                       'whole_containers': whole_cont_list,
-
-                                       'containers': cont_list,
-                                       'container_meta': cont_meta,
-                                       'container_acl': cont_acl,
-                                       'containers_unquote': cont_unquote_name,
-                                       'delete_confirm': delete_confirm,
-                                       'acl_edit': acl_edit,
-                                       'meta_edit': meta_edit,
-                                       'enable_versions': self.enable_versions,
-
-                                       'limit': limit,
-                                       'prev_p': prev_marker,
-                                       'next_p': next_marker,
-                                       'last_p': last_marker})
-            self.token_bank[token].update({'msg': ''})
-            return resp
+            return self.page_cont_list(req, storage_url, token)
         if path_type == 3:  # container
-
-            try:
-                (cont_status, _whole_obj_list) = get_container(storage_url, token, cont,
-                                                        full_listing=True)
-                (cont_status, obj_list) = get_container(storage_url, token, cont,
-                                                        limit=self.items_per_page,
-                                                        marker=marker)
-            except ClientException, err:
-                pass
-            whole_obj_list = zip([_o['name'] for _o in _whole_obj_list],
-                                 [unquote(_o['name']) for _o in _whole_obj_list])
-            obj_meta = {}
-            obj_unquote_name = {}
-            obj_delete_set_time = {}
-            edit_param = [delete_confirm, meta_edit]
-            if any(edit_param):
-                edit_obj = filter(None, edit_param)[0]
-                obj_list = [obj for obj in _whole_obj_list if obj['name'] == edit_obj]
-            for i in obj_list:
-                try:
-                    meta = head_object(storage_url, token, cont, i['name'])
-                except ClientException, err:
-                    resp = Response(charset='utf8')
-                    resp.status = err.http_status
-                    return resp
-                obj_meta[i['name']] = dict(
-                    [(m[len('x-object-meta-'):].capitalize(), meta[m])
-                     for m in meta.keys() if m.startswith('x-object-meta')])
-                obj_unquote_name[i['name']] = unquote(i['name'])
-                if 'x-delete-at' in meta:
-                    obj_delete_set_time[i['name']] = meta.get('x-delete-at')
-            (prev_marker, next_marker, last_marker) = paging_items(marker, whole_obj_list, self.items_per_page)
-            resp = Response(charset='utf8')
-            resp.set_cookie('_token', token, path=self.page_path,
-                            max_age=self.cookie_max_age)
-            base = '/'.join(base.split('/') + [cont])
-            resp.app_iter = self.tmpl({'ptype': 'objects',
-                                       'title': self.title,
-                                       'lang': lang,
-                                       'top': self.page_path,
-                                       'account': acc,
-                                       'container': cont,
-                                       'container_unquote': unquote(cont),
-                                       'message': msg,
-                                       'base': base,
-
-                                       'whole_containers': whole_cont_list,
-                                       'objects': obj_list,
-                                       'object_meta': obj_meta,
-                                       'objects_unquote': obj_unquote_name, 
-
-                                       'delete_confirm': delete_confirm,
-                                       'acl_edit': acl_edit,
-                                       'meta_edit': meta_edit,
-                                       'delete_set_time': obj_delete_set_time,
-                                       'enable_object_expire': self.enable_object_expire,
-
-                                       'limit': limit,
-                                       'prev_p': prev_marker,
-                                       'next_p': next_marker,
-                                       'last_p': last_marker})
-            self.token_bank[token].update({'msg': ''})
-            return resp
+            return self.page_obj_list(req, storage_url, token)
         if path_type == 4:  # object
             try:
                 (obj_status, objct) = get_object(storage_url, token, cont, obj)
@@ -540,7 +365,202 @@ class Taylor(object):
             return resp
         return HTTPFound(location=self.add_prefix(storage_url))
 
+    def page_cont_list(self, req, storage_url, token, template=None):
+        """ """
+        if template is None:
+            tmpl = self.tmpl
+        path = urlparse(self.del_prefix(req.url)).path
+        if len(path.split('/')) <= 2:
+            path = urlparse(storage_url).path
+        vrs, acc, cont, obj = split_path(path, 1, 4, True)
+        lang = self.get_lang(req)
+        base = self.add_prefix(urlparse(storage_url).path)
+        status = self.token_bank.get(token, None)
+        msg = status.get('msg', '') if status else ''
+        params = req.params_alt()
+        limit = params.get('limit', self.items_per_page)
+        marker = params.get('marker', '')
+        end_marker = params.get('end_marker', '')
+        delete_confirm = quote(params.get('delete_confirm', ''))
+        acl_edit = quote(params.get('acl_edit', ''))
+        meta_edit = quote(params.get('meta_edit', ''))
+        # whole container list
+        try:
+            whole_cont_list = self._get_whole_cont_list(storage_url, token)
+        except ClientException, err:
+            resp = Response(charset='utf8')
+            resp.status = err.http_status
+            return resp
+        # container list for one page
+        try:
+            (acct_status, cont_list) = get_account(storage_url, token,
+                                                   limit=self.items_per_page,
+                                                   marker=marker)
+        except ClientException, err:
+            resp = Response(charset='utf8')
+            resp.status = err.http_status
+            return resp
+        cont_meta = {}
+        cont_acl = {}
+        cont_unquote_name = {}
+        cont_version_cont = {}
+        # pick only one container for confiming and editing
+        edit_param = [acl_edit, delete_confirm, meta_edit]
+        if any(edit_param):
+            edit_cont = filter(None, edit_param)[0]
+            meta =  head_container(storage_url, token, edit_cont)
+            cont_list = [{'name': edit_cont,
+                          'count': meta.get('x-container-object-count'), 
+                          'bytes': meta.get('x-container-bytes-used')}]
+        # get matadata for each containers
+        for i in cont_list:
+            try:
+                meta = head_container(storage_url, token, i['name'])
+            except ClientException, err:
+                resp = Response(charset='utf8')
+                resp.status = e.http_status
+                return resp
+            cont_meta[i['name']] = dict(
+                [(m[len('x-container-meta-'):].capitalize(), meta[m])
+                 for m in meta.keys()
+                 if m.startswith('x-container-meta')])
+            cont_acl[i['name']] = dict(
+                [(m[len('x-container-'):], meta[m])
+                 for m in meta.keys()
+                 if m.startswith('x-container-read')
+                 or m.startswith('x-container-write')])
+            cont_unquote_name[i['name']] = unquote(i['name'])
+            if 'x-versions-location' in meta:
+                cont_version_cont[i['name']] = unquote(meta.get('x-versions-location'))
+        # calc marker for paging.
+        (prev_marker, next_marker, last_marker) = self.paging_items(marker,
+                                                                    whole_cont_list,
+                                                                    self.items_per_page)
+        # create page
+        resp = Response(charset='utf8')
+        resp.set_cookie('_token', token, path=self.page_path,
+                        max_age=self.cookie_max_age)
+        resp.app_iter = tmpl({'ptype': 'containers',
+                              'title': self.title,
+                              'lang': lang,
+                              'top': self.page_path,
+                              'account': acc,
+                              'message': msg,
+                              'base': base,
+                              'whole_containers': whole_cont_list,
+                              'containers': cont_list,
+                              'container_meta': cont_meta,
+                              'container_acl': cont_acl,
+                              'containers_unquote': cont_unquote_name,
+                              'delete_confirm': delete_confirm,
+                              'acl_edit': acl_edit,
+                              'meta_edit': meta_edit,
+                              'enable_versions': self.enable_versions,
+                              'limit': limit,
+                              'prev_p': prev_marker,
+                              'next_p': next_marker,
+                              'last_p': last_marker})
+        self.token_bank[token].update({'msg': ''})
+        return resp
+
+    def page_obj_list(self, req, storage_url, token, template=None):
+        """ """
+        if template is None:
+            tmpl = self.tmpl
+        path = urlparse(self.del_prefix(req.url)).path
+        if len(path.split('/')) <= 2:
+            path = urlparse(storage_url).path
+        vrs, acc, cont, obj = split_path(path, 1, 4, True)
+        lang = self.get_lang(req)
+        base = self.add_prefix(urlparse(storage_url).path)
+        status = self.token_bank.get(token, None)
+        msg = status.get('msg', '') if status else ''
+        params = req.params_alt()
+        limit = params.get('limit', self.items_per_page)
+        marker = params.get('marker', '')
+        end_marker = params.get('end_marker', '')
+        delete_confirm = quote(params.get('delete_confirm', ''))
+        acl_edit = quote(params.get('acl_edit', ''))
+        meta_edit = quote(params.get('meta_edit', ''))
+        # whole container list
+        try:
+            whole_cont_list = self._get_whole_cont_list(storage_url, token)
+        except ClientException, err:
+            resp = Response(charset='utf8')
+            resp.status = err.http_status
+            return resp
+        # whole object list, and object list for one page
+        try:
+            (cont_status, _whole_obj_list) = get_container(storage_url, token, cont,
+                                                           full_listing=True)
+            (cont_status, obj_list) = get_container(storage_url, token, cont,
+                                                    limit=self.items_per_page,
+                                                    marker=marker)
+        except ClientException, err:
+            resp = Response(charset='utf8')
+            resp.status = err.http_status
+            return resp
+        whole_obj_list = zip([_o['name'] for _o in _whole_obj_list],
+                             [unquote(_o['name']) for _o in _whole_obj_list])
+        obj_meta = {}
+        obj_unquote_name = {}
+        obj_delete_set_time = {}
+        path_type = len([i for i in [vrs, acc, cont, obj] if i])
+        # pick only one object for confiming and editing
+        edit_param = [delete_confirm, meta_edit]
+        if any(edit_param):
+            edit_obj = filter(None, edit_param)[0]
+            obj_list = [obj for obj in _whole_obj_list if obj['name'] == edit_obj]
+        # get matadata for each objects
+        for i in obj_list:
+            try:
+                meta = head_object(storage_url, token, cont, i['name'])
+            except ClientException, err:
+                resp = Response(charset='utf8')
+                resp.status = err.http_status
+                return resp
+            obj_meta[i['name']] = dict(
+                [(m[len('x-object-meta-'):].capitalize(), meta[m])
+                 for m in meta.keys() if m.startswith('x-object-meta')])
+            obj_unquote_name[i['name']] = unquote(i['name'])
+            if 'x-delete-at' in meta:
+                obj_delete_set_time[i['name']] = meta.get('x-delete-at')
+        # calc markers for paging.
+        (prev_marker, next_marker, last_marker) = self.paging_items(marker,
+                                                                    whole_obj_list,
+                                                                    self.items_per_page)
+        # create page
+        resp = Response(charset='utf8')
+        resp.set_cookie('_token', token, path=self.page_path,
+                        max_age=self.cookie_max_age)
+        base = '/'.join(base.split('/') + [cont])
+        resp.app_iter = tmpl({'ptype': 'objects',
+                              'title': self.title,
+                              'lang': lang,
+                              'top': self.page_path,
+                              'account': acc,
+                              'container': cont,
+                              'container_unquote': unquote(cont),
+                              'message': msg,
+                              'base': base,
+                              'whole_containers': whole_cont_list,
+                              'objects': obj_list,
+                              'object_meta': obj_meta,
+                              'objects_unquote': obj_unquote_name, 
+                              'delete_confirm': delete_confirm,
+                              'acl_edit': acl_edit,
+                              'meta_edit': meta_edit,
+                              'delete_set_time': obj_delete_set_time,
+                              'enable_object_expire': self.enable_object_expire,
+                              'limit': limit,
+                              'prev_p': prev_marker,
+                              'next_p': next_marker,
+                              'last_p': last_marker})
+        self.token_bank[token].update({'msg': ''})
+        return resp
+
     def get_lang(self, req):
+        """ """
         return req.headers.get('Accept-Language', 'en,').split(',')[0].split(';')[0]
 
     def add_prefix(self, url):
@@ -614,6 +634,7 @@ class Taylor(object):
         return headers
 
     def get_current_meta(self, headers):
+        """ """
         current_meta = {}
         for k in headers.keys():
             if k.startswith('x-container-meta-') or k.startswith('x-container-read-') or \
@@ -625,12 +646,48 @@ class Taylor(object):
         return current_meta
 
     def clean_blank_meta(self, meta):
+        """ """
         current_meta = {}
         for k in meta.keys():
             if len(meta.get(k)) == 0:
                 continue
             current_meta.update({k: meta.get(k)})
         return current_meta
+
+    def paging_items(self, marker, whole_list, items_per_page):
+        """ pick container or object names to use marker parameter."""
+        # one page
+        if len(whole_list) <= items_per_page:
+            return ('', '', '')
+        whole_len = len(whole_list)
+        marker_index = range(items_per_page - 1, whole_len, items_per_page)
+        whole_cont_names = [c for c, uc in whole_list]
+        markers_list = [whole_cont_names[idx] for idx in marker_index]
+        if not marker:
+            # the first page
+            prev_marker = ''
+            next_marker = whole_cont_names[marker_index[0]]
+        else:
+            # over the 2nd page.
+            if marker in markers_list:
+                m_idx = markers_list.index(marker)
+            else:
+                near_markers = filter(lambda x: x > marker, markers_list)
+                if len(near_markers) != 0:
+                    m_idx = markers_list.index(near_markers[0])
+                else:
+                    m_idx = len(markers_list) - 1
+            prev_marker = '' if m_idx <= 0 else markers_list[m_idx - 1]
+            next_marker = markers_list[m_idx + 1 if (len(markers_list) - 1) > m_idx else -1]
+        last_marker = markers_list[-1]
+        return (prev_marker, next_marker, last_marker)
+
+    def _get_whole_cont_list(self, storage_url, token):
+        """ whole container list """
+        (_junk, _whole_cont_list) = get_account(storage_url, token,
+                                                full_listing=True)
+        return zip([_c['name'] for _c in _whole_cont_list],
+                   [unquote(_c['name']) for _c in _whole_cont_list])
 
     def action_routine(self, req, storage_url, token):
         """ execute action """
@@ -794,6 +851,7 @@ class Taylor(object):
             except ClientException, err:
                 return err.http_status
             return HTTP_ACCEPTED
+        return HTTP_PRECONDITION_FAILED
 
 def filter_factory(global_conf, **local_conf):
     """Returns a WSGI filter app for use with paste.deploy."""
