@@ -456,6 +456,7 @@ class Taylor(object):
                               'acl_edit': acl_edit,
                               'meta_edit': meta_edit,
                               'enable_versions': self.enable_versions,
+                              'containers_version': cont_version_cont,
                               'limit': limit,
                               'prev_p': prev_marker,
                               'next_p': next_marker,
@@ -679,7 +680,7 @@ class Taylor(object):
                     m_idx = len(markers_list) - 1
             prev_marker = '' if m_idx <= 0 else markers_list[m_idx - 1]
             next_marker = markers_list[m_idx + 1 if (len(markers_list) - 1) > m_idx else -1]
-        last_marker = markers_list[-1]
+        last_marker = markers_list[-1 if (whole_len - 1) != marker_index[-1] else -2]
         return (prev_marker, next_marker, last_marker)
 
     def _get_whole_cont_list(self, storage_url, token):

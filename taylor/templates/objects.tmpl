@@ -90,48 +90,52 @@
     <tr>
     % if name == delete_confirm:
       <td colspan="3">
-	  <fieldset class="delete_confirm">
-	    <legend>Delete ${unquote_name} Confirm</legend>
-	    <p>Are you sure?</p>
-	    <form action="${base}/${name}" method="post">
+	<div id="obj_delete_confirm">
+	  <form action="${base}/${name}" method="post">
+	    <fieldset class="delete_confirm">
+	      <legend>Delete ${unquote_name} Confirm</legend>
+	      <p>Are you sure?</p>
 	      <input type="hidden" name="_action" value="obj_delete">
 	      <input type="hidden" name="object_name" value="${name}">
 	      <input type="submit" value="Ok">
-	    </form>
-	    <input type="submit" value="Cancel">
-	  </fieldset>
+	      <input type="submit" value="Cancel">
+	    </fieldset>
+	  </form>
+	</div>
       </td>
     </tr>
     % endif
     % if name == meta_edit:
     <tr>
       <td colspan="3">
-	<form action="${base}/${name}" method="post">
-	  <input type="hidden" name="_action" value="obj_metadata">
-	  <input type="hidden" name="object_name" value="${name}">
-	  <fieldset class="meta_edit">
-	    <legend>Metadata Edit</legend>
-	    <table>
-	      <tr><th>Key</th><th>Value</th><th>
-		  % if len(object_meta[name]) != 0:
-		  Remove
-		  % endif
-	      </th></tr>
-	      % for m in object_meta[name].keys():
-	      <tr><td>${unquote(m)}</td><td>${unquote(object_meta[name][m])}</td>
-		<td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
-	      <input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[name][m]}">
-	      % endfor
-	      % for n in range(3):
-	      <tr><td><input type="text" name="object_meta_key${n}" size="12" maxlength="128"
-			     placeholder="New object metadata name"></td>
-		<td colspan="2"><input type="text" name="object_meta_val${n}" size="24" maxlength="256"
-				       placeholder="Object metadata value"></td></tr>
-	      % endfor
-	    </table>
-	    <input type="submit" value="Commit">
-	  </fieldset>
-	</form>
+	<div id="obj_meta_edit">
+	  <form action="${base}/${name}" method="post">
+	    <input type="hidden" name="_action" value="obj_metadata">
+	    <input type="hidden" name="object_name" value="${name}">
+	    <fieldset class="meta_edit">
+	      <legend>Metadata Edit</legend>
+	      <table>
+		<tr><th>Key</th><th>Value</th><th>
+		    % if len(object_meta[name]) != 0:
+		    Remove
+		    % endif
+		</th></tr>
+		% for m in object_meta[name].keys():
+		<tr><td>${unquote(m)}</td><td>${unquote(object_meta[name][m])}</td>
+		  <td><input type="checkbox" name="remove-x-object-meta-${m.lower()}"></td></tr>
+		<input type="hidden" name="x-object-meta-${m.lower()}" value="${object_meta[name][m]}">
+		% endfor
+		% for n in range(3):
+		<tr><td><input type="text" name="object_meta_key${n}" size="12" maxlength="128"
+			       placeholder="New object metadata name"></td>
+		  <td colspan="2"><input type="text" name="object_meta_val${n}" size="24" maxlength="256"
+					 placeholder="Object metadata value"></td></tr>
+		% endfor
+	      </table>
+	      <input type="submit" value="Commit">
+	    </fieldset>
+	  </form>
+	</div>
       </td>
     </tr>
     % endif
