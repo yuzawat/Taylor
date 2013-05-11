@@ -27,6 +27,7 @@ by Web browser...
 * copying object to other container
 * setting/unsetting a schedule to delete
 * enable to use multibyte for container, object, and their metadata.
+* pseudo directory support (but can't upload objects with pseudo directory, maybe)
 
 ## Setting
 in proxy-server.conf:
@@ -71,7 +72,7 @@ checking by Google Chrome ver 26.0.
 * python-swiftclient
 
 ## Version
-0.1(2013-05-04)
+0.1(2013-05-11)
 
 ## URL
 https://github.com/yuzawat/Taylor

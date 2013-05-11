@@ -144,13 +144,14 @@ class Taylor(object):
         self.auth_url = conf.get('auth_url')
         self.items_per_page = int(conf.get('items_per_page', 5))
         self.cookie_max_age = int(conf.get('cookie_max_age', 3600))
-        self.enable_versions = config_true_value(conf.get('enable_versions', 'yes'))
-        self.enable_object_expire = config_true_value(conf.get('enable_object_expire', 'yes'))
+        self.enable_versions = config_true_value(conf.get('enable_versions', 'no'))
+        self.enable_object_expire = config_true_value(conf.get('enable_object_expire', 'no'))
         self.path = abspath(dirname(__file__))
         self.tmpl = TaylorTemplate()
         self.token_bank = {}
         self.memcache = None
         self.secure = True if 'key_file' in self.conf and 'cert_file' in self.conf else False
+        self.delimiter = '/'
         self.logger.info('%s loaded.' % self.title)
 
     @wsgify
@@ -160,16 +161,13 @@ class Taylor(object):
         login_path = '%s/%s' % (self.page_path, 'login')
         token = None
         storage_url = None
-
         # favicon
         if req.path == '/favicon.ico':
             return self.pass_file(req, 'images/favicon.ico',
                                   'image/vnd.microsoft.icon')
-
         # not taylor
         if not req.path.startswith(self.page_path):
             return self.app
-
         # image
         if req.path.startswith(join(self.page_path, 'image')):
             return self.pass_file(req,
@@ -182,7 +180,6 @@ class Taylor(object):
         if req.path.startswith(join(self.page_path, 'js')):
             return self.pass_file(req,
                                   join('js', basename(req.path)))
-
         # get token from cookie and query memcache
         token = req.cookies('_token')
         if self.memcache and token:
@@ -193,24 +190,19 @@ class Taylor(object):
         status = self.token_bank.get(token, None)
         if status:
             storage_url = status.get('url', None)
-
         # login page
         if req.path == login_path:
             return self.page_login(req)
         if not token or not storage_url:
             return HTTPFound(location=login_path)
         self.token_bank[token].update({'last': time()})
-
         # clean up token bank
-        if not self.memcache:
-            for tok, val in self.token_bank.items():
-                last = val.get('last', 0)
-                if (time() - last) >= self.cookie_max_age:
-                    del(self.token_bank[tok])
-        
+        for tok, val in self.token_bank.items():
+            last = val.get('last', 0)
+            if (time() - last) >= self.cookie_max_age:
+                del(self.token_bank[tok])
         if 'X-PJAX' in req.headers:
             print 'X-PJAX'
-
         # after action
         if '_action' in req.params_alt():
             if req.params_alt()['_action'] == 'logout':
@@ -218,7 +210,6 @@ class Taylor(object):
                 self.memcache.delete('%s_%s' % (self.title, token))
                 return HTTPFound(location=login_path)
             return self.page_after_action(req, storage_url, token)
-
         # construct main pages
         return self.page_main(req, storage_url, token)
 
@@ -478,7 +469,9 @@ class Taylor(object):
                               'limit': limit,
                               'prev_p': prev_marker,
                               'next_p': next_marker,
-                              'last_p': last_marker})
+                              'last_p': last_marker,
+                              'delimiter': '',
+                              'prefix': ''})
         self.token_bank[token].update({'msg': ''})
         self.memcache_update(token)
         return resp
@@ -499,6 +492,7 @@ class Taylor(object):
         limit = params.get('limit', self.items_per_page)
         marker = params.get('marker', '')
         end_marker = params.get('end_marker', '')
+        prefix = params.get('prefix', '')
         delete_confirm = quote(params.get('delete_confirm', ''))
         acl_edit = quote(params.get('acl_edit', ''))
         meta_edit = quote(params.get('meta_edit', ''))
@@ -512,16 +506,19 @@ class Taylor(object):
         # whole object list, and object list for one page
         try:
             (cont_status, _whole_obj_list) = get_container(storage_url, token, cont,
+                                                           delimiter=self.delimiter,
+                                                           prefix=prefix,
                                                            full_listing=True)
             (cont_status, obj_list) = get_container(storage_url, token, cont,
                                                     limit=self.items_per_page,
-                                                    marker=marker)
+                                                    delimiter=self.delimiter,
+                                                    prefix=prefix, marker=marker)
         except ClientException, err:
             resp = Response(charset='utf8')
             resp.status = err.http_status
             return resp
-        whole_obj_list = zip([_o['name'] for _o in _whole_obj_list],
-                             [unquote(_o['name']) for _o in _whole_obj_list])
+        whole_obj_list = zip([_o.get('name',_o.get('subdir')) for _o in _whole_obj_list],
+                             [unquote(_o.get('name', _o.get('subdir'))) for _o in _whole_obj_list])
         obj_meta = {}
         obj_unquote_name = {}
         obj_delete_set_time = {}
@@ -530,21 +527,28 @@ class Taylor(object):
         edit_param = [delete_confirm, meta_edit]
         if any(edit_param):
             edit_obj = filter(None, edit_param)[0]
-            obj_list = [obj for obj in _whole_obj_list if obj['name'] == edit_obj]
+            obj_list = [obj for obj in _whole_obj_list if 'name' in obj and obj['name'] == edit_obj]
         # get matadata for each objects
         for i in obj_list:
             try:
-                meta = head_object(storage_url, token, cont, i['name'])
+                if 'subdir' in i:
+                    mata = {}
+                else:
+                    meta = head_object(storage_url, token, cont, i['name'])
             except ClientException, err:
                 resp = Response(charset='utf8')
                 resp.status = err.http_status
                 return resp
-            obj_meta[i['name']] = dict(
-                [(m[len('x-object-meta-'):].capitalize(), meta[m])
-                 for m in meta.keys() if m.startswith('x-object-meta')])
-            obj_unquote_name[i['name']] = unquote(i['name'])
-            if 'x-delete-at' in meta:
-                obj_delete_set_time[i['name']] = meta.get('x-delete-at')
+            if 'subdir' in i:
+                obj_meta[i['subdir']] = {}
+                obj_unquote_name[i['subdir']] = unquote(i['subdir'])
+            else:
+                obj_meta[i['name']] = dict(
+                    [(m[len('x-object-meta-'):].capitalize(), meta[m])
+                     for m in meta.keys() if m.startswith('x-object-meta')])
+                obj_unquote_name[i['name']] = unquote(i['name'])
+                if 'x-delete-at' in meta:
+                    obj_delete_set_time[i['name']] = meta.get('x-delete-at')
         # calc markers for paging.
         (prev_marker, next_marker, last_marker) = self.paging_items(marker,
                                                                     whole_obj_list,
@@ -576,7 +580,9 @@ class Taylor(object):
                               'limit': limit,
                               'prev_p': prev_marker,
                               'next_p': next_marker,
-                              'last_p': last_marker})
+                              'last_p': last_marker,
+                              'delimiter': self.delimiter,
+                              'prefix': prefix})
         self.token_bank[token].update({'msg': ''})
         self.memcache_update(token)
         return resp
@@ -607,11 +613,12 @@ class Taylor(object):
         """ return Swift Container URL """
         p = urlsplit(url)
         vrs, acc, cont, obj = split_path(p.path, 1, 4, True)
-        if obj:
-            path = '/'.join(p.path.split('/')[:-1])
-        else:
-            path = '/'.join(p.path.split('/'))
-        return urlunsplit((p.scheme, p.netloc, path, p.query, p.fragment))
+        query = ''
+        if obj and self.delimiter in obj:
+            prefix = self.delimiter.join(obj.split(self.delimiter)[:-1]) + self.delimiter
+            query = 'delimiter=%s&prefix=%s' % (self.delimiter, prefix)
+        path = '/' + vrs + '/' + acc + '/' + cont
+        return urlunsplit((p.scheme, p.netloc, path, query, p.fragment))
 
     def metadata_check(self, form):
         """ """
@@ -728,11 +735,14 @@ class Taylor(object):
         page = int(params.get('_page', 0))
         marker = str(params.get('_marker', ''))
         cont_param = params.get('cont_name', None)
+        obj_prefix = params.get('obj_prefix', '')
         if cont_param:
             cont = quote(cont_param)
         obj_param = params.get('obj_name', None)
         if obj_param and len(obj_param) == 2:
             obj_name, obj_fp = obj_param
+            if obj_prefix:
+                obj_name = obj_prefix + obj_name
             obj = quote(obj_name)
         else:
             obj_name, obj_fp = ('', None)
@@ -855,6 +865,8 @@ class Taylor(object):
                 return err.http_status
             return HTTP_ACCEPTED
         if action == 'obj_copy':
+            if not to_obj:
+                to_obj = obj.split(self.delimiter)[-1]
             try:
                 copy_object(storage_url, token, cont, obj,
                             to_cont, to_obj)
