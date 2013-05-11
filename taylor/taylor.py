@@ -13,7 +13,8 @@ from swift.common.http import *
 from swift.common.middleware.acl import referrer_allowed
 from swift.common.swob import Request, Response, wsgify, \
     HTTPNotFound, HTTPFound
-from swift.common.utils import split_path, config_true_value, get_logger, cache_from_env
+from swift.common.utils import split_path, config_true_value, \
+    get_logger, cache_from_env
 from time import time, mktime, strptime
 from types import MethodType
 from urlparse import urlsplit, urlunsplit, parse_qsl, urlparse
@@ -149,11 +150,13 @@ class Taylor(object):
         self.tmpl = TaylorTemplate()
         self.token_bank = {}
         self.memcache = None
+        self.secure = True if 'key_file' in self.conf and 'cert_file' in self.conf else False
         self.logger.info('%s loaded.' % self.title)
 
     @wsgify
     def __call__(self, req):
-        self.memcache = cache_from_env(req.environ)
+        if not self.memcache:
+            self.memcache = cache_from_env(req.environ)
         login_path = '%s/%s' % (self.page_path, 'login')
         token = None
         storage_url = None
@@ -180,8 +183,13 @@ class Taylor(object):
             return self.pass_file(req,
                                   join('js', basename(req.path)))
 
-        # get token from cookie
+        # get token from cookie and query memcache
         token = req.cookies('_token')
+        if self.memcache and token:
+            cache_val = self.memcache.get(
+                '%s_%s' % (self.title, token))
+            if cache_val:
+                self.token_bank[token] = cache_val
         status = self.token_bank.get(token, None)
         if status:
             storage_url = status.get('url', None)
@@ -194,10 +202,11 @@ class Taylor(object):
         self.token_bank[token].update({'last': time()})
 
         # clean up token bank
-        for tok, val in self.token_bank.items():
-            last = val.get('last', 0)
-            if (time() - last) >= self.cookie_max_age:
-                del(self.token_bank[tok])
+        if not self.memcache:
+            for tok, val in self.token_bank.items():
+                last = val.get('last', 0)
+                if (time() - last) >= self.cookie_max_age:
+                    del(self.token_bank[tok])
         
         if 'X-PJAX' in req.headers:
             print 'X-PJAX'
@@ -206,6 +215,7 @@ class Taylor(object):
         if '_action' in req.params_alt():
             if req.params_alt()['_action'] == 'logout':
                 del self.token_bank[token]
+                self.memcache.delete('%s_%s' % (self.title, token))
                 return HTTPFound(location=login_path)
             return self.page_after_action(req, storage_url, token)
 
@@ -245,7 +255,9 @@ class Taylor(object):
                 resp = HTTPFound(location=self.add_prefix(storage_url) + \
                                  '?limit=%s' % self.items_per_page)
                 resp.set_cookie('_token', token, path=self.page_path,
-                                max_age=self.cookie_max_age)
+                                max_age=self.cookie_max_age,
+                                secure=self.secure)
+                self.memcache_update(token)
                 return resp
             except Exception, err:
                 lang = self.get_lang(req)
@@ -268,6 +280,7 @@ class Taylor(object):
                                    'message': msg})
         if msg:
             self.token_bank[token].update({'msg': ''})
+        self.memcache_update(token)
         return resp
 
     def page_after_action(self, req, storage_url, token):
@@ -332,7 +345,9 @@ class Taylor(object):
                 loc = self.cont_path(path)
         resp = HTTPFound(location=self.add_prefix(loc))
         resp.set_cookie('_token', token, path=self.page_path,
-                        max_age=self.cookie_max_age)
+                        max_age=self.cookie_max_age,
+                        secure=self.secure)
+        self.memcache_update(token)
         return resp
 
     def page_main(self, req, storage_url, token):
@@ -357,11 +372,13 @@ class Taylor(object):
                 pass
             resp = Response()
             resp.set_cookie('_token', token, path=self.page_path,
-                            max_age=self.cookie_max_age)
+                            max_age=self.cookie_max_age,
+                            secure=self.secure)
             resp.status = HTTP_OK
             resp.headers = obj_status
             resp.body = objct
             self.token_bank[token].update({'msg': ''})
+            self.memcache_update(token)
             return resp
         return HTTPFound(location=self.add_prefix(storage_url))
 
@@ -439,7 +456,8 @@ class Taylor(object):
         # create page
         resp = Response(charset='utf8')
         resp.set_cookie('_token', token, path=self.page_path,
-                        max_age=self.cookie_max_age)
+                        max_age=self.cookie_max_age,
+                        secure=self.secure)
         resp.app_iter = tmpl({'ptype': 'containers',
                               'title': self.title,
                               'lang': lang,
@@ -462,6 +480,7 @@ class Taylor(object):
                               'next_p': next_marker,
                               'last_p': last_marker})
         self.token_bank[token].update({'msg': ''})
+        self.memcache_update(token)
         return resp
 
     def page_obj_list(self, req, storage_url, token, template=None):
@@ -533,7 +552,8 @@ class Taylor(object):
         # create page
         resp = Response(charset='utf8')
         resp.set_cookie('_token', token, path=self.page_path,
-                        max_age=self.cookie_max_age)
+                        max_age=self.cookie_max_age,
+                        secure=self.secure)
         base = '/'.join(base.split('/') + [cont])
         resp.app_iter = tmpl({'ptype': 'objects',
                               'title': self.title,
@@ -558,7 +578,14 @@ class Taylor(object):
                               'next_p': next_marker,
                               'last_p': last_marker})
         self.token_bank[token].update({'msg': ''})
+        self.memcache_update(token)
         return resp
+    
+    def memcache_update(self, token):
+        """ """
+        if self.memcache and self.token_bank.get(token, None):
+            self.memcache.set('%s_%s' % (self.title, token), self.token_bank.get(token),
+                              time=self.cookie_max_age)
 
     def get_lang(self, req):
         """ """
