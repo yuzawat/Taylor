@@ -640,7 +640,9 @@ class Taylor(object):
                 keyname = form['container_meta_key%s' % i].lower()
                 if len(keyname) > 128:
                     raise ValueError
-                val = form['container_meta_val%s' % i]
+                val = form.get('container_meta_val%s' % i)
+                if not val:
+                    continue
                 if len(val) > 256:
                     raise ValueError
                 headers.update({'x-container-meta-' + keyname: val})
@@ -649,7 +651,9 @@ class Taylor(object):
                 keyname = form['object_meta_key%s' % i].lower()
                 if len(keyname) > 128:
                     raise ValueError
-                val = form['object_meta_val%s' % i]
+                val = form.get('object_meta_val%s' % i)
+                if not val:
+                    continue
                 if len(val) > 256:
                     raise ValueError
                 headers.update({'x-object-meta-' + keyname: val})
