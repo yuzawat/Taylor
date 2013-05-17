@@ -2,13 +2,46 @@
 <%
    from time import strftime, strptime, localtime, mktime, timezone
    from urllib import unquote
+
+   def icon_image(content_type):
+       if content_type.startswith('image/'):
+           return 'image.png'
+       if content_type.startswith('audio/'):
+           return 'audio.png'
+       if content_type.startswith('video/'):
+           return 'video.png'
+       if content_type.startswith('application/vnd.ms-') or content_type.startswith('application/ms'):
+           return 'office.png'
+       if content_type.startswith('application/octet-stream'):
+           return 'octed-stream.png'
+       if content_type.startswith('application/zip') or content_type.startswith('application/x-apple-diskimage') or content_type.startswith('application/x-tar'):
+           return 'archive.png'
+       if content_type.startswith('application/x-ruby'):
+           return 'ruby.png'
+       if content_type.startswith('application/pdf'):
+           return 'pdf.png'
+       if content_type.startswith('application/'):
+           return 'application.png'
+       if content_type.startswith('text/x-csrc'):
+           return 'c.png'
+       if content_type.startswith('text/x-python'):
+           return 'python.png'
+       if content_type.startswith('text/x-perl'):
+           return 'perl.png'
+       if content_type.startswith('text/x-ruby'):
+           return 'ruby.png'
+       if content_type.startswith('text/x-sh'):
+           return 'shell.png'
+       if content_type.startswith('text/'):
+           return 'text.png'
+       return 'file.png'
 %>
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
   <%include file="paging.tmpl"/>
   <%include file="upload_object.tmpl"/>
   % endif
-  <div id="upload_target" draggable="true">
+  <div id="upload_target">
   <table class="objects">
     <tr class="obj_list">
       <th class="obj_name">Name</th>
@@ -27,7 +60,7 @@
       % if 'subdir' in i:
       <td class="obj_name">
 	<a href="${base}/?delimiter=${delimiter}&prefix=${name}" class="obj_name">
-      	  <img src="${top}/image/folder.png" class="obj_icon" alt="${unquote_name} icon">${unquote_name.split(delimiter)[-2]}
+      	  <img src="${top}/image/folder.png" class="obj_icon" alt="${unquote_name}">${unquote_name.split(delimiter)[-2]}
       </a></td>
       <td class="obj_status">
       </td>
@@ -36,7 +69,7 @@
       % else:
       <td class="obj_name">
 	<a href="${base}/${name}" class="obj_name">
-      	  <img src="${top}/image/file.png" class="obj_icon" alt="${unquote_name} icon">${unquote_name.split(delimiter)[-1]}
+      	  <img src="${top}/image/${icon_image(i['content_type'])}" class="obj_icon" alt="${unquote_name}">${unquote_name.split(delimiter)[-1]}
       </a></td>
       <td class="obj_status">
 	<ul class="status">
