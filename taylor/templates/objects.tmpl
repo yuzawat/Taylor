@@ -41,7 +41,7 @@
   <%include file="paging.tmpl"/>
   <%include file="upload_object.tmpl"/>
   % endif
-  <div id="upload_target">
+  <div class="dropzone">
   <table class="objects">
     <tr class="obj_list">
       <th class="obj_name">Name</th>
@@ -79,6 +79,7 @@
 	     modified = localtime(mktime(strptime(i['last_modified'].partition('.')[0] + ' GMT', '%Y-%m-%dT%H:%M:%S %Z')) - timezone)
 	  %>
 	  <li class="default_status">Last-modified: ${strftime('%Y-%m-%d %H:%M:%S', modified)}</li>
+	  <li class="default_status">MD5: <span class="hash">${i['hash']}</span></li>
 	  % for m in object_meta[name].keys():
 	  <li class="metadata">${unquote(m)}: ${unquote(object_meta[name][m])}</li>
 	  % endfor

@@ -146,12 +146,12 @@ class Taylor(object):
         self.cookie_max_age = int(conf.get('cookie_max_age', 3600))
         self.enable_versions = config_true_value(conf.get('enable_versions', 'no'))
         self.enable_object_expire = config_true_value(conf.get('enable_object_expire', 'no'))
+        self.delimiter = conf.get('delimiter', '/')
         self.path = abspath(dirname(__file__))
         self.tmpl = TaylorTemplate()
         self.token_bank = {}
         self.memcache = None
         self.secure = True if 'key_file' in self.conf and 'cert_file' in self.conf else False
-        self.delimiter = '/'
         self.logger.info('%s loaded.' % self.title)
 
     @wsgify
