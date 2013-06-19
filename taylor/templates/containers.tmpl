@@ -44,7 +44,7 @@
     	  <li class="metadata">${unquote(j)}: ${unquote(container_meta[name][j])}</li>
     	  % endfor
 	  % if version:
-    	  <li class="version_container">Versioning Container: ${unquote_version}</li>
+    	  <li class="version_container">Versioning to: ${unquote_version}</li>
 	  % endif
     	</ul>
       </td>
@@ -55,26 +55,26 @@
     	    % if name == delete_confirm:
     	    <a href="${base}" class="cont_action">Stop delete confirming</a>
     	    % else:
-    	    <a href="${base}?delete_confirm=${name}" class="cont_action">Delete</a>
+    	    <a href="${base}?delete_confirm=${name}" class="cont_action cont_delete">Delete</a>
     	    % endif
     	  </li>
     	  <li>
     	    % if name == acl_edit:
     	    <a href="${base}" class="cont_action">Stop editing ACL</a>
     	    % else:
-    	    <a href="${base}?acl_edit=${name}" class="cont_action">ACL</a>
+    	    <a href="${base}?acl_edit=${name}" class="cont_action cont_acl">ACL</a>
     	    % endif
     	  </li>
     	  <li>
     	    % if name == meta_edit:
     	    <a href="${base}" class="cont_action">Stop editing Metadata</a>
     	    % else:
-    	    <a href="${base}?meta_edit=${name}" class="cont_action">Metadata</a>
+    	    <a href="${base}?meta_edit=${name}" class="cont_action cont_meta">Metadata</a>
     	    % endif
     	  </li>
 	  % if enable_versions:
 	  <li>
-	    <form action="${base}/${name}" method="post">
+	    <form action="${base}/${name}" method="post" class="cont_versioning">
 	      <input type="hidden" name="cont_name" value="${name}" id="cont_name" />
 	      % if version:
       	      <input type="hidden" name="_action" value="cont_unset_version" id="cont_unset_version" />

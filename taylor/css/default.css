@@ -207,10 +207,6 @@ td.obj_action{
   color: #504f4f;
 }
 
-p.message{
-    text
-}
-
 div.paging{
     text-align: center;
 }
@@ -223,4 +219,13 @@ span.hash {
 div.paging {
     font-size: 1.3rem;
     font-family: monospace;
+}
+
+/* hide dropzone preview panel */
+div.dz-preview {
+    display: none;
+}
+
+div.dz-file-preview {
+    display: none;
 }

@@ -19,7 +19,10 @@ from time import time, mktime, strptime
 from types import MethodType
 from urlparse import urlsplit, urlunsplit, parse_qsl, urlparse
 from urllib import quote, unquote
-
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 """
 Swift Built-in Object Manipulator
@@ -34,6 +37,7 @@ pipeline = catch_errors proxy-logging healthcheck cache taylor tempauth proxy-lo
 use = egg:Taylor#taylor
 page_path = /taylor
 auth_url = http://localhost:8080/auth/v1.0
+auth_version = 1
 items_per_page = 5
 cookie_max_age = 3600
 enable_versions = no
@@ -131,6 +135,48 @@ def copy_object(url, token, from_cont, from_obj, to_cont, to_obj=None,
                       http_conn=http_conn, proxy=proxy)
 
 
+def icon_image(content_type):
+    """ 
+    set icon image for content-type
+    This is called in objects.tmpl
+    """
+    if content_type.startswith('image/'):
+        return 'image.png'
+    if content_type.startswith('audio/'):
+        return 'audio.png'
+    if content_type.startswith('video/'):
+        return 'video.png'
+    if content_type.startswith('application/vnd.ms-') or \
+       content_type.startswith('application/ms') or \
+       content_type.startswith('application/vnd.openxmlformats-officedocument.'):
+        return 'office.png'
+    if content_type.startswith('application/octet-stream'):
+        return 'octed-stream.png'
+    if content_type.startswith('application/zip') or \
+       content_type.startswith('application/x-apple-diskimage') or \
+       content_type.startswith('application/x-tar'):
+        return 'archive.png'
+    if content_type.startswith('application/x-ruby'):
+        return 'ruby.png'
+    if content_type.startswith('application/pdf'):
+        return 'pdf.png'
+    if content_type.startswith('application/'):
+        return 'application.png'
+    if content_type.startswith('text/x-csrc'):
+        return 'c.png'
+    if content_type.startswith('text/x-python'):
+        return 'python.png'
+    if content_type.startswith('text/x-perl'):
+        return 'perl.png'
+    if content_type.startswith('text/x-ruby'):
+        return 'ruby.png'
+    if content_type.startswith('text/x-sh'):
+        return 'shell.png'
+    if content_type.startswith('text/'):
+        return 'text.png'
+    return 'file.png'
+
+
 class Taylor(object):
     """ swift embeded easy manipulator """
     def __init__(self, app, conf):
@@ -142,6 +188,7 @@ class Taylor(object):
         self.logger = get_logger(conf, log_route='%s' % self.title)
         self.page_path = conf.get('page_path', '/taylor')
         self.auth_url = conf.get('auth_url')
+        self.auth_version = int(conf.get('auth_version', 1))
         self.items_per_page = int(conf.get('items_per_page', 5))
         self.cookie_max_age = int(conf.get('cookie_max_age', 3600))
         self.enable_versions = config_true_value(conf.get('enable_versions', 'no'))
@@ -168,6 +215,7 @@ class Taylor(object):
         # not taylor
         if not req.path.startswith(self.page_path):
             return self.app
+
         # image
         if req.path.startswith(join(self.page_path, 'image')):
             return self.pass_file(req,
@@ -202,7 +250,14 @@ class Taylor(object):
             if (time() - last) >= self.cookie_max_age:
                 del(self.token_bank[tok])
         if 'X-PJAX' in req.headers:
-            print 'X-PJAX'
+            pass
+        # ajax action
+        if '_ajax' in req.params_alt():
+            if req.params_alt()['_action'].endswith('_meta_list'):
+                status, headers = self.action_routine(req, storage_url, token)
+                return Response(status=status, body=headers)
+            return Response(status=self.action_routine(req, storage_url,
+                                                       token))
         # after action
         if '_action' in req.params_alt():
             if req.params_alt()['_action'] == 'logout':
@@ -236,7 +291,8 @@ class Taylor(object):
                 username = req.params_alt().get('username')
                 password = req.params_alt().get('password')
                 (storage_url, token) = get_auth(self.auth_url,
-                                                username, password)
+                                                username, password,
+                                                auth_version=self.auth_version)
                 if self.token_bank.get(token, None):
                     self.token_bank[token].update({'url': storage_url,
                                                    'last': int(time())})
@@ -582,7 +638,8 @@ class Taylor(object):
                               'next_p': next_marker,
                               'last_p': last_marker,
                               'delimiter': self.delimiter,
-                              'prefix': prefix})
+                              'prefix': prefix,
+                              'icon_image': icon_image})
         self.token_bank[token].update({'msg': ''})
         self.memcache_update(token)
         return resp
@@ -833,6 +890,20 @@ class Taylor(object):
             except ClientException, err:
                 return err.http_status
             return HTTP_ACCEPTED
+        if action == 'cont_meta_list':
+            headers = {}
+            try:
+                headers = head_container(storage_url, token, cont)
+            except ClientException, err:
+                return err.http_status, json.dumps(headers)
+            return HTTP_OK, json.dumps(headers)
+        if action == 'obj_meta_list':
+            headers = {}
+            try:
+                headers = head_object(storage_url, token, cont, obj)
+            except ClientException, err:
+                return err.http_status, headers
+            return HTTP_OK, headers
         if action == 'obj_create':
             if obj:
                 if len(obj) > 1024:
@@ -916,8 +987,9 @@ class TaylorTemplate(object):
                                     encoding_errors='replace')
 
     def __call__(self, values):
+        template_type = 'taylor.tmpl'
         try:
-            tmpl = self.tmpls.get_template('taylor.tmpl')
+            tmpl = self.tmpls.get_template(template_type)
             return tmpl.render(**values)
         except:
             return exceptions.html_error_template().render()

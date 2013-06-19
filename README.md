@@ -39,6 +39,7 @@ pipeline = catch_errors proxy-logging healthcheck cache taylor tempauth proxy-lo
 use = egg:Taylor#taylor
 page_path = /taylor
 auth_url = http://localhost:8080/auth/v1.0
+auth_version = 1
 items_per_page = 5
 cookie_max_age = 3600
 enable_versions = no
@@ -50,6 +51,8 @@ enable_object_expire = no
   * setting of base path of this application.
 * auth_url
   * auth URL of OpenStack Storage.
+* auth_version
+  * authorization version: 1: tempauth, 2: keystone
 * items_per_page
   * showing item count per a page. default: 5
 * cookie_max_age
@@ -72,7 +75,7 @@ checking by Google Chrome ver 26.0.
 * python-swiftclient
 
 ## Version
-0.1(2013-05-11)
+0.1(2013-06-19)
 
 ## URL
 https://github.com/yuzawat/Taylor
