@@ -1,6 +1,11 @@
 ## -*- coding: utf-8 -*-
 <%
    from urllib import unquote
+   import sys
+   if sys.version_info[0] == 2 and sys.version_info[1] >= 7:
+       num_format = '{:,}'
+   else:
+       num_format = '{:n}'
 %>
 <article class="containers">
   % if not any([acl_edit, delete_confirm, meta_edit]):
@@ -30,8 +35,8 @@
       </td>
       <td class="cont_status">
     	<ul class="status">
-    	  <li class="default_status">Count: ${'{:,}'.format(int(i['count']))}</li>
-    	  <li class="default_status">Size: ${'{:,}'.format(int(i['bytes']))}</li>
+    	  <li class="default_status">Count: ${num_format.format(int(i['count']))}</li>
+    	  <li class="default_status">Size: ${num_format.format(int(i['bytes']))}</li>
 	  % if container_acl.get(name, None):
 	  % if container_acl[name].get('read', None):
     	  <li class="acl">Read ACL: ${container_acl[name].get('read', '')}<li>

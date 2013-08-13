@@ -2,6 +2,11 @@
 <%
    from time import strftime, strptime, localtime, mktime, timezone
    from urllib import unquote
+   import sys
+   if sys.version_info[0] == 2 and sys.version_info[1] >= 7:
+       num_format = '{:,}'
+   else:
+       num_format = '{:n}'
 %>
 <article class="objects">
   % if not any([delete_confirm, meta_edit]):
@@ -41,7 +46,7 @@
       <td class="obj_status">
 	<ul class="status">
 	  <li class="default_status">Content-Type: ${i['content_type']}</li>
-	  <li class="default_status">Size: ${'{:,}'.format(int(i['bytes']))}</li>
+	  <li class="default_status">Size: ${num_format.format(int(i['bytes']))}</li>
 	  <%
 	     modified = localtime(mktime(strptime(i['last_modified'].partition('.')[0] + ' GMT', '%Y-%m-%dT%H:%M:%S %Z')) - timezone)
 	  %>
