@@ -28,6 +28,7 @@ by Web browser...
 * setting/unsetting a schedule to delete
 * enable to use multibyte for container, object, and their metadata.
 * pseudo directory support (but can't upload objects with pseudo directory, maybe)
+* adding container-sync metadate
 
 ## Setting
 in proxy-server.conf:
@@ -44,6 +45,7 @@ items_per_page = 5
 cookie_max_age = 3600
 enable_versions = no
 enable_object_expire = no
+enable_container_sync = no
 ```
 
 ### setting items
@@ -61,6 +63,8 @@ enable_object_expire = no
   * enable setting a version-storing container. default: no
 * enable_object_expire
   * enable setting a schedule for expiring objects. default: no
+* enable_container_sync
+  * enable adding container-sync metadata. default: no
 
 
 ## How I Learned to Stop Worrying
@@ -75,7 +79,7 @@ checking by Google Chrome ver 26.0.
 * python-swiftclient
 
 ## Version
-0.1(2013-06-19)
+0.1(2013-08-13)
 
 ## URL
 https://github.com/yuzawat/Taylor

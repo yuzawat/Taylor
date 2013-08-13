@@ -42,6 +42,7 @@ items_per_page = 5
 cookie_max_age = 3600
 enable_versions = no
 enable_object_expire = no
+enable_container_sync = no
 ----------------
 """
 
@@ -193,6 +194,7 @@ class Taylor(object):
         self.cookie_max_age = int(conf.get('cookie_max_age', 3600))
         self.enable_versions = config_true_value(conf.get('enable_versions', 'no'))
         self.enable_object_expire = config_true_value(conf.get('enable_object_expire', 'no'))
+        self.enable_container_sync = config_true_value(conf.get('enable_container_sync', 'no'))
         self.delimiter = conf.get('delimiter', '/')
         self.path = abspath(dirname(__file__))
         self.tmpl = TaylorTemplate()
@@ -250,7 +252,12 @@ class Taylor(object):
             if (time() - last) >= self.cookie_max_age:
                 del(self.token_bank[tok])
         if 'X-PJAX' in req.headers:
-            pass
+            return self.pass_file(req, 'images/test.html',
+                                  'text/html')
+            # return self.page_cont_list(req, storage_url, token,
+            #                            template_name='containers.tmpl')
+            # return self.page_obj_list(req, storage_url, token,
+            #                           template_name='objectss.tmpl')
         # ajax action
         if '_ajax' in req.params_alt():
             if req.params_alt()['_action'].endswith('_meta_list'):
@@ -369,7 +376,8 @@ class Taylor(object):
             loc = self.cont_path(path)
         if action == 'cont_metadata' or action == 'obj_metadata' or \
            action == 'cont_acl' or action == 'obj_set_delete_time' or \
-           action == 'cont_set_version' or action == 'cont_unset_version':
+           action == 'cont_set_version' or action == 'cont_unset_version' or \
+           action == 'cont_contsync':
             if self.action_routine(req, storage_url, token) == HTTP_ACCEPTED:
                 result = 'Success'
             else:
@@ -448,6 +456,7 @@ class Taylor(object):
         delete_confirm = quote(params.get('delete_confirm', ''))
         acl_edit = quote(params.get('acl_edit', ''))
         meta_edit = quote(params.get('meta_edit', ''))
+        contsync_edit = quote(params.get('contsync_edit', ''))
         # whole container list
         try:
             whole_cont_list = self._get_whole_cont_list(storage_url, token)
@@ -468,8 +477,10 @@ class Taylor(object):
         cont_acl = {}
         cont_unquote_name = {}
         cont_version_cont = {}
+        cont_sync_to = {}
+        cont_sync_key = {}
         # pick only one container for confiming and editing
-        edit_param = [acl_edit, delete_confirm, meta_edit]
+        edit_param = [acl_edit, delete_confirm, meta_edit, contsync_edit]
         if any(edit_param):
             edit_cont = filter(None, edit_param)[0]
             meta =  head_container(storage_url, token, edit_cont)
@@ -496,6 +507,10 @@ class Taylor(object):
             cont_unquote_name[i['name']] = unquote(i['name'])
             if 'x-versions-location' in meta:
                 cont_version_cont[i['name']] = unquote(meta.get('x-versions-location'))
+            if 'x-container-sync-to' in meta:
+                cont_sync_to[i['name']] = unquote(meta.get('x-container-sync-to'))
+            if 'x-container-sync-key' in meta:
+                cont_sync_key[i['name']] = unquote(meta.get('x-container-sync-key'))
         # calc marker for paging.
         (prev_marker, next_marker, last_marker) = self.paging_items(marker,
                                                                     whole_cont_list,
@@ -522,6 +537,10 @@ class Taylor(object):
                               'meta_edit': meta_edit,
                               'enable_versions': self.enable_versions,
                               'containers_version': cont_version_cont,
+                              'enable_container_sync': self.enable_container_sync,
+                              'contsync_edit': contsync_edit,
+                              'cont_sync_to': cont_sync_to,
+                              'cont_sync_key': cont_sync_key,
                               'limit': limit,
                               'prev_p': prev_marker,
                               'next_p': next_marker,
@@ -729,12 +748,26 @@ class Taylor(object):
                 del(headers[acl])
         return headers
 
+    def contsync_check(self, form):
+        """ """
+        removing = [i[len('remove-'):]
+                    for i in form.keys() if i.startswith('remove-')]
+        headers = {}
+        for sync in ['x-container-sync-to', 'x-container-sync-key']:
+            headers.update({acl: form.get(sync, 'blank')})
+            if sync in removing:
+                headers.update({sync: ''})
+            if headers[sync] == 'blank':
+                del(headers[sync])
+        return headers
+
     def get_current_meta(self, headers):
         """ """
         current_meta = {}
         for k in headers.keys():
             if k.startswith('x-container-meta-') or k.startswith('x-container-read-') or \
                k.startswith('x-container-write-') or k.startswith('x-versions-location') or \
+               k.startswith('x-container-sync-to-') or k.startswith('x-container-sync-key') or \
                k.startswith('x-object-meta-') or k.startswith('x-delete-a'):
                 current_meta.update({k: headers.get(k)})
             else:
@@ -826,6 +859,8 @@ class Taylor(object):
         acl_headers = self.acl_check(params)
         obj_delete_set = params.get('obj_delete_time', None)
         version_cont = params.get('version_container', None)
+        contsync_to = params.get('sync_to', None)
+        contsync_key = params.get('sync_key', None)
         if version_cont:
             version_cont = quote(version_cont)
         unset_version = params.get('unset_version_container', None)
@@ -859,8 +894,11 @@ class Taylor(object):
                 return err.http_status
             return HTTP_NO_CONTENT
         if action == 'cont_metadata' or action == 'cont_acl' or \
-           action == 'cont_set_version' or action == 'cont_unset_version':
-            if meta_headers or acl_headers or version_cont or unset_version:
+           action == 'cont_set_version' or action == 'cont_unset_version' or \
+           action == 'cont_contsync':
+            headers = {}
+            if meta_headers or acl_headers or version_cont or unset_version or \
+               contsync_to or contsync_key:
                 try:
                     headers = head_container(storage_url, token, cont)
                 except ClientException, err:
@@ -885,6 +923,12 @@ class Taylor(object):
             if unset_version:
                 headers = self.get_current_meta(headers)
                 headers.update({'x-versions-location': ''})
+            if contsync_to and contsync_key:
+                headers = self.get_current_meta(headers)
+                headers.update({'x-container-sync-to': contsync_to})
+                headers.update({'x-container-sync-key': contsync_key})
+            if not headers:
+                return HTTP_NO_CONTENT
             try:
                 post_container(storage_url, token, cont, headers)
             except ClientException, err:

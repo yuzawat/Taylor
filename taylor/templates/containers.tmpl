@@ -46,6 +46,11 @@
 	  % if version:
     	  <li class="version_container">Versioning to: ${unquote_version}</li>
 	  % endif
+	  % if enable_container_sync:
+	  % if cont_sync_to.get(name, None):
+    	  <li class="container_sync">Sync to: ${cont_sync_to[name]}</li>
+	  % endif
+	  % endif
     	</ul>
       </td>
       <td class="cont_action">
@@ -96,6 +101,11 @@
 	      </select>
 	      % endif
 	    </form>
+	  </li>
+	  % endif
+	  % if enable_container_sync:
+	  <li>
+    	    <a href="${base}?contsync_edit=${name}" class="cont_action cont_sync">Container Sync</a>
 	  </li>
 	  % endif
     	</ul>
@@ -195,6 +205,48 @@
     		  <td colspan="2"><input type="text" name="container_meta_val${n}" size="24" maxlength="256"
 					 placeholder="Container metadata value"></td></tr>
     		% endfor
+    	      </table>
+    	      <input type="submit" value="Commit">
+    	    </fieldset>
+    	  </form>
+	</div>
+      </td>
+    </tr>
+    % endif
+    % if name == contsync_edit:
+    <tr>
+      <td colspan="2">
+	<div id="contsync_edit">
+    	  <form action="${base}/${name}" method="post">
+    	    <input type="hidden" name="_action" value="cont_contsync">
+    	    <input type="hidden" name="container_name" value="${name}">
+    	    <fieldset class="contsync_edit">
+    	      <legend>Container Sync</legend>
+    	      <table>
+    		<tr>
+    		  <td>Sync To:</td>
+    		  <td>
+    		    <input type="text" name="sync_to" size="50"
+			   % if cont_sync_to.get(name, None):
+    			   value="${cont_sync_to[name]}"
+			   % else:
+			   value=""
+			   % endif
+			   placeholder="Sync To Container URL">
+    		  </td>
+    		</tr>
+    		<tr>
+    		  <td>Sync Key:</td>
+    		  <td>
+    		    <input type="text" name="sync_key" size="50"
+			   % if cont_sync_key.get(name, None): 
+    			   value="${cont_sync_key[name]}"
+			   % else:
+			   value=""
+			   % endif
+			   placeholder="Sync Key">
+    		  </td>
+    		</tr>
     	      </table>
     	      <input type="submit" value="Commit">
     	    </fieldset>
