@@ -953,7 +953,10 @@ class Taylor(object):
                 if len(obj) > 1024:
                     return HTTP_PRECONDITION_FAILED
                 try:
-                    put_object(storage_url, token, cont, obj, obj_fp)
+                    obj_fp.seek(0,2)
+                    obj_size = obj_fp.tell()
+                    obj_fp.seek(0,0)
+                    put_object(storage_url, token, cont, obj, obj_fp, content_length=obj_size)
                 except ClientException, err:
                     return err.http_status
                 return HTTP_CREATED
