@@ -824,6 +824,7 @@ class Taylor(object):
         vrs, acc, cont, obj = split_path(path, 1, 4, True)
         path_type = len([i for i in [vrs, acc, cont, obj] if i])
         params = req.params_alt()
+        self.logger.debug('Received Params: %s' % params)
         action = params.get('_action')
         lines = int(params.get('_line', self.items_per_page))
         page = int(params.get('_page', 0))
@@ -952,10 +953,18 @@ class Taylor(object):
             if obj:
                 if len(obj) > 1024:
                     return HTTP_PRECONDITION_FAILED
+                obj_size = None
+                if params.get('file_size'):
+                    obj_size = int(params['file_size'])
+                else:
+                    try:
+                        obj_fp.seek(0,2)
+                        obj_size = obj_fp.tell()
+                        obj_fp.seek(0,0)
+                    except  IOError, err:
+                        pass
+                self.logger.debug('Upload obj size: %s' % obj_size)
                 try:
-                    obj_fp.seek(0,2)
-                    obj_size = obj_fp.tell()
-                    obj_fp.seek(0,0)
                     put_object(storage_url, token, cont, obj, obj_fp, content_length=obj_size)
                 except ClientException, err:
                     return err.http_status

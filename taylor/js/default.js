@@ -17,6 +17,16 @@ var show_message = function() {
     }
 };
 
+var get_file_size = function() {
+    var upfiles = document.getElementById("upfile").files;
+    console.log(upfiles);
+    console.log(upfiles[0].size);
+    var elm = document.createElement('input');
+    elm.setAttribute('type', 'hidden');
+    elm.setAttribute('name', 'file_size');
+    elm.setAttribute('value', upfiles[0].size);
+    document.getElementById("upload_obj_values").appendChild(elm);
+};
 
 $(function() {
       $('#id_username').focus().end();
